@@ -1,6 +1,17 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Image, StyleSheet, Dimensions } from "react-native";
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  Image, 
+  StyleSheet, 
+  Dimensions, 
+  StatusBar, 
+  ScrollView,
+  SafeAreaView 
+} from "react-native";
 import { useRouter } from "expo-router";
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get("window");
 
@@ -8,224 +19,278 @@ export default function HomeScreen() {
   const router = useRouter();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.heroCard}>
-        <View style={styles.topImages}>
-          <View style={styles.pandaWrapper}>
-            <Image
-              source={{
-                uri: "https://images.pexels.com/photos/674574/pexels-photo-674574.jpeg?auto=compress&w=100&h=100&fit=crop",
-              }}
-              style={styles.pandaImage}
-              resizeMode="cover"
-            />
+    <LinearGradient 
+      colors={['#0D1C2B', '#0C3054']} 
+      style={styles.container}
+    >
+      <StatusBar barStyle="light-content" />
+      <SafeAreaView style={{ flex: 1 }}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Subtle Background Decorator */}
+          <View style={styles.topGlow} />
+
+          {/* Hero Section */}
+          <View style={styles.heroCard}>
+            <View style={styles.topImages}>
+              <View style={[styles.floatingPhoto, styles.pandaPos]}>
+                <Image
+                  source={{ uri: "https://images.pexels.com/photos/674574/pexels-photo-674574.jpeg?auto=compress&w=150" }}
+                  style={styles.smallPhoto}
+                />
+              </View>
+              <View style={[styles.floatingPhoto, styles.catPos]}>
+                 <Image
+                  source={{ uri: "https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&w=150" }}
+                  style={styles.smallPhoto}
+                />
+              </View>
+            </View>
+
+            <View style={styles.avatarContainer}>
+               <View style={styles.avatarOutline}>
+                  <Image
+                    source={{ uri: "https://images.pexels.com/photos/1181696/pexels-photo-1181696.jpeg?auto=compress&w=400" }}
+                    style={styles.avatar}
+                  />
+               </View>
+               <View style={styles.pulseContainer}>
+                  <View style={styles.pulseInner} />
+               </View>
+            </View>
+
+            <View style={styles.textSection}>
+              <View style={styles.chip}>
+                <Text style={styles.chipText}>PETORA ECOSYSTEM</Text>
+              </View>
+              
+              <Text style={styles.headline}>
+                Yaralı bir <Text style={styles.highlight}>dosta</Text>{"\n"}hemen yardım et
+              </Text>
+              
+              <Text style={styles.description}>
+                Vaka bildir, en yakın kliniği bul ve hayat kurtarmak için saniyelerle yarış.
+              </Text>
+            </View>
           </View>
-          <Image
-            source={{
-              uri: "https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&w=100&h=100&fit=crop",
-            }}
-            style={styles.catImage}
-            resizeMode="cover"
-          />
-        </View>
 
-        <View style={styles.avatarCircle}>
-          <Image
-            source={{
-              uri: "https://images.pexels.com/photos/1181696/pexels-photo-1181696.jpeg?auto=compress&w=300&h=300&fit=crop",
-            }}
-            style={styles.avatar}
-            resizeMode="cover"
-          />
-        </View>
+          {/* Feature Grid */}
+          <View style={styles.featureRow}>
+            <TouchableOpacity activeOpacity={0.9} style={styles.featureCard}>
+              <View style={[styles.iconBox, { backgroundColor: '#FFF0EE' }]}>
+                <Text style={styles.emoji}>🚑</Text>
+              </View>
+              <Text style={styles.featureTitle}>Acil Bildirim</Text>
+              <Text style={styles.featureSubtitle}>Hızlı Vaka Aç</Text>
+            </TouchableOpacity>
 
-        <View style={styles.textSection}>
-          <Text style={styles.badge}>PetAid Rescue</Text>
-          <Text style={styles.headline}>
-            Yarali bir <Text style={styles.boldColor}>dosta</Text> hemen yardim et
-          </Text>
-          <Text style={styles.description}>
-            Vaka bildir, en yakin klinigi bul ve hayatin kurtarilmasi icin hizli
-            adimlari tek ekrandan yonet.
-          </Text>
-        </View>
-      </View>
+            <TouchableOpacity activeOpacity={0.9} style={styles.featureCard}>
+              <View style={[styles.iconBox, { backgroundColor: '#EEF7FF' }]}>
+                <Text style={styles.emoji}>📍</Text>
+              </View>
+              <Text style={styles.featureTitle}>Yakın Klinik</Text>
+              <Text style={styles.featureSubtitle}>Nöbetçi Bul</Text>
+            </TouchableOpacity>
+          </View>
 
-      <View style={styles.featureRow}>
-        <View style={styles.featureCard}>
-          <Text style={styles.featureIcon}>🚑</Text>
-          <Text style={styles.featureTitle}>Acil Bildirim</Text>
-          <Text style={styles.featureText}>Tek dokunusla vaka olustur</Text>
-        </View>
-        <View style={styles.featureCard}>
-          <Text style={styles.featureIcon}>📍</Text>
-          <Text style={styles.featureTitle}>Yakin Klinik</Text>
-          <Text style={styles.featureText}>Konumuna gore hizli yonlendirme</Text>
-        </View>
-      </View>
+          {/* Action Footer */}
+          <View style={styles.footer}>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              style={styles.mainBtn} 
+              onPress={() => router.push("/login")}
+            >
+              <Text style={styles.mainBtnText}>Acil Yardımı Başlat</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.loginButton}
-        onPress={() => router.push("/login")}
-      >
-        <Text style={styles.loginButtonText}>Acil yardim baslat</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.signUpBtn}>
-        <Text style={styles.signUpText}>Bakim adimlarini goruntule</Text>
-      </TouchableOpacity>
-    </View>
+            <TouchableOpacity style={styles.secondaryBtn}>
+              <Text style={styles.secondaryBtnText}>İlk Yardım Rehberini Gör</Text>
+            </TouchableOpacity>
+          </View>
+          
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#3FAF84",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 20,
-    paddingHorizontal: 14,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 40,
+  },
+  topGlow: {
+    position: 'absolute',
+    top: -100,
+    right: -50,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(37, 89, 202, 0.77)',
   },
   heroCard: {
-    width: "100%",
-    backgroundColor: "#4EB890",
-    borderRadius: 30,
-    alignItems: "center",
-    paddingTop: 22,
-    paddingBottom: 20,
-    marginBottom: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 36,
+    paddingTop: 50,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.22)",
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 20,
   },
   topImages: {
-    position: "relative",
-    width,
-    height: 110,
-    marginBottom: 10,
+    position: 'absolute',
+    top: -25,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '110%',
   },
-  pandaWrapper: {
-    position: "absolute",
-    top: 0,
-    left: 32,
-    zIndex: 2,
-    backgroundColor: "#fff",
-    borderRadius: 24,
+  floatingPhoto: {
+    backgroundColor: '#fff',
+    padding: 4,
+    borderRadius: 14,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  pandaPos: { transform: [{ rotate: '-15deg' }], left: 10 },
+  catPos: { transform: [{ rotate: '15deg' }], right: 10 },
+  smallPhoto: { width: 45, height: 45, borderRadius: 10 },
+  
+  avatarContainer: {
+    marginBottom: 15,
+    zIndex: 10,
+  },
+  avatarOutline: {
     padding: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 1, height: 2 },
-  },
-  pandaImage: {
-    width: 76,
-    height: 62,
-    borderRadius: 18,
-  },
-  catImage: {
-    position: "absolute",
-    top: 5,
-    right: 36,
-    width: 76,
-    height: 76,
-    borderRadius: 24,
-    borderWidth: 4,
-    borderColor: "#4EB890",
-    backgroundColor: "#fff",
-  },
-  avatarCircle: {
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 100,
   },
   avatar: {
-    width: 156,
-    height: 156,
-    borderRadius: 78,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: '#fff',
+  },
+  pulseContainer: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 3,
+  },
+  pulseInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#D8FF8A',
   },
   textSection: {
-    width: "86%",
-    alignItems: "center",
+    alignItems: 'center',
   },
-  badge: {
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    color: "#EFFFF7",
-    fontSize: 11,
-    marginBottom: 10,
-    overflow: "hidden",
+  chip: {
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  chipText: {
+    color: '#D8FF8A',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
   },
   headline: {
-    fontSize: 29,
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#fff',
+    textAlign: 'center',
     lineHeight: 36,
   },
-  boldColor: {
-    color: "#D8FF8A",
-    fontWeight: "800",
+  highlight: {
+    color: '#D8FF8A',
   },
   description: {
     fontSize: 14,
-    lineHeight: 21,
-    textAlign: "center",
-    color: "rgba(255,255,255,0.92)",
-    paddingHorizontal: 8,
+    color: 'rgba(255, 255, 255, 0.85)',
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 20,
   },
   featureRow: {
-    width: "100%",
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 16,
+    flexDirection: 'row',
+    gap: 15,
+    marginBottom: 20,
   },
   featureCard: {
     flex: 1,
-    backgroundColor: "#E9FFF6",
-    borderRadius: 16,
-    padding: 12,
-    minHeight: 92,
-  },
-  featureIcon: {
-    fontSize: 18,
-    marginBottom: 6,
-  },
-  featureTitle: {
-    fontSize: 14,
-    marginBottom: 3,
-  },
-  featureText: {
-    color: "#357865",
-    fontSize: 12,
-  },
-  loginButton: {
-    width: "100%",
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 28,
-    paddingVertical: 16,
-    alignItems: "center",
+    padding: 20,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  iconBox: {
+    width: 50,
+    height: 50,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  loginButtonText: {
-    color: "#197B5B",
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  signUpBtn: {
-    paddingVertical: 8,
-  },
-  signUpText: {
-    color: "#fff",
+  emoji: { fontSize: 24 },
+  featureTitle: {
     fontSize: 14,
-    fontWeight: "600",
-    textDecorationLine: "underline",
+    fontWeight: '700',
+    color: '#1A4D3B',
+  },
+  featureSubtitle: {
+    fontSize: 11,
+    color: '#777',
+    marginTop: 2,
+  },
+  footer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  mainBtn: {
+    width: '100%',
+    backgroundColor: '#DBDBDB',
+    paddingVertical: 20,
+    borderRadius: 24,
+    alignItems: 'center',
+    shadowColor: '#D8FF8A',
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  mainBtnText: {
+    color: '#1A4D3B',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  secondaryBtn: {
+    marginTop: 15,
+    paddingVertical: 10,
+  },
+  secondaryBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });
