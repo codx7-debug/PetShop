@@ -39,7 +39,6 @@ function ChevronLeft() {
   );
 }
 
-function EmailIcon() {
   return (
     <Svg width={32} height={32} viewBox="0 0 32 32" fill="none">
     <Rect x={3} y={8} width={26} height={16} rx={4} stroke="#333" strokeWidth={2.2} fill="#fff" />

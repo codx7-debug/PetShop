@@ -169,10 +169,6 @@ const styles = StyleSheet.create({
   headline: {
     fontSize: 29,
     lineHeight: 36,
-    textAlign: "center",
-    color: "#fff",
-    fontWeight: "700",
-    marginBottom: 12,
   },
   boldColor: {
     color: "#D8FF8A",
@@ -203,8 +199,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   featureTitle: {
-    color: "#145D46",
-    fontWeight: "700",
     fontSize: 14,
     marginBottom: 3,
   },
