@@ -5,8 +5,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearUserSession } from '../lib/session';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { AppLocale } from '../i18n/translations';
 import { SUPPORTED_LOCALES, LOCALE_NAMES } from '../i18n/translations';
@@ -18,6 +19,7 @@ const ORG_DRAFT_KEY = '@petshop_org_registration_draft';
 
 export default function AuthScreen() {
   const { t, isRTL, locale, setLocale } = useLanguage();
+  const { signInUser } = useLocalSearchParams<{ signInUser?: string | string[] }>();
   const [isLogin, setIsLogin] = useState(true);
   const [userType, setUserType] = useState<'guest' | 'user' | 'org'>('guest');
 
@@ -30,6 +32,16 @@ export default function AuthScreen() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const signInFlag = Array.isArray(signInUser) ? signInUser[0] : signInUser;
+
+  React.useEffect(() => {
+    if (signInFlag === '1' || signInFlag === 'true') {
+      setUserType('user');
+      setIsLogin(true);
+      setError('');
+    }
+  }, [signInFlag]);
 
   const validateOrgLogin = (): string | null => {
     if (!email.trim()) return t('login.errEmailRequired');
@@ -62,6 +74,7 @@ export default function AuthScreen() {
   const handleMainAction = async () => {
     setError('');
     if (userType === 'guest') {
+      await clearUserSession();
       router.replace('/home');
       return;
     }

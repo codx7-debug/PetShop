@@ -8,6 +8,7 @@ import adminApiRoutes from "./routes/adminApi.routes.js";
 import catalogRoutes from "./routes/catalog.routes.js";
 import reportApiRoutes from "./routes/reportApi.routes.js";
 import orgPortalRoutes from "./routes/orgPortal.routes.js";
+import userPortalRoutes from "./routes/userPortal.routes.js";
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.get("/db-check", async (req, res) => {
 });
 
 app.use("/api", appointmentRoutes);
+app.use("/api", userPortalRoutes);
 app.use("/api", catalogRoutes);
 app.use("/api", reportApiRoutes);
 app.use("/api/org", orgPortalRoutes);

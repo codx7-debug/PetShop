@@ -38,6 +38,12 @@ function ThemedApp() {
         <Stack.Screen name="book-service" options={{ presentation: "card" }} />
         <Stack.Screen name="book-appointment" options={{ presentation: "card" }} />
         <Stack.Screen name="reports" options={{ presentation: "card" }} />
+        <Stack.Screen name="profile-edit" options={{ presentation: "card" }} />
+        <Stack.Screen name="profile-password" options={{ presentation: "card" }} />
+        <Stack.Screen name="profile-payments" options={{ presentation: "card" }} />
+        <Stack.Screen name="profile-address" options={{ presentation: "card" }} />
+        <Stack.Screen name="profile-notifications" options={{ presentation: "card" }} />
+        <Stack.Screen name="profile-pets" options={{ presentation: "card" }} />
         <Stack.Screen name="org-reports" options={{ presentation: "card" }} />
         <Stack.Screen name="admin-dashboard" options={{ presentation: "card" }} />
       </Stack>

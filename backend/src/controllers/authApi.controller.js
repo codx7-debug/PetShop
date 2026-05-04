@@ -18,7 +18,7 @@ function readAdminLoginPassword() {
 }
 
 /** Stable JSON shape for clients (always includes `role`). */
-function shapePublicUser(row, orgProfile = null) {
+export function shapePublicUser(row, orgProfile = null) {
   if (!row) return null;
   const base = {
     id: row.id,
@@ -29,6 +29,16 @@ function shapePublicUser(row, orgProfile = null) {
     org_name: row.org_name ?? null,
     org_contact: row.org_contact ?? null,
     created_at: row.created_at ?? null,
+    phone: row.phone ?? null,
+    date_of_birth: row.date_of_birth ?? null,
+    address_line: row.address_line ?? null,
+    address_city: row.address_city ?? null,
+    address_region: row.address_region ?? null,
+    address_postal: row.address_postal ?? null,
+    address_country: row.address_country ?? null,
+    notify_email: row.notify_email !== false,
+    notify_push: row.notify_push !== false,
+    notify_marketing: Boolean(row.notify_marketing),
   };
   if (orgProfile && base.role === "org") {
     return {
@@ -112,6 +122,34 @@ export async function register(req, res) {
   } catch (err) {
     console.error("Registration error:", err);
     return res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+export async function changePassword(req, res) {
+  const uid = req.auth?.id;
+  if (uid == null || uid === 0) {
+    return res.status(403).json({ message: "Password change is not available for this account." });
+  }
+  const { old_password, new_password } = req.body || {};
+  const oldStr = String(old_password ?? "");
+  const newStr = String(new_password ?? "");
+  if (!oldStr || !newStr) {
+    return res.status(400).json({ message: "Old password and new password are required." });
+  }
+  if (newStr.length < 6) {
+    return res.status(400).json({ message: "New password must be at least 6 characters." });
+  }
+  try {
+    const user = await userDb.getUserById(uid);
+    if (!user) return res.status(404).json({ message: "User not found." });
+    const ok = await bcrypt.compare(oldStr, user.password);
+    if (!ok) return res.status(400).json({ message: "Current password is incorrect." });
+    const hashed = await bcrypt.hash(newStr, 10);
+    await userDb.updateUserPassword(uid, hashed);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Could not update password." });
   }
 }
 

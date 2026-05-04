@@ -26,8 +26,10 @@ export default function BookAppointmentScreen() {
     durationMinutes?: string;
     orgName?: string;
     orgType?: string;
+    petId?: string;
   }>();
   const serviceId = Number(params.serviceId);
+  const initialPetId = params.petId ? Number(params.petId) : NaN;
   const durationMin = Math.max(15, Number(params.durationMinutes) || 60);
 
   const [token, setToken] = useState<string | null>(null);
@@ -73,7 +75,11 @@ export default function BookAppointmentScreen() {
         if (!cancelled) {
           const list = Array.isArray(data) ? data : [];
           setPets(list);
-          setPetId((prev) => (prev != null ? prev : list[0]?.id ?? null));
+          setPetId((prev) => {
+            if (prev != null) return prev;
+            if (Number.isFinite(initialPetId) && list.some((p) => p.id === initialPetId)) return initialPetId;
+            return list[0]?.id ?? null;
+          });
         }
       } catch {
         if (!cancelled) setPets([]);
@@ -84,7 +90,7 @@ export default function BookAppointmentScreen() {
     return () => {
       cancelled = true;
     };
-  }, [token, userId]);
+  }, [token, userId, initialPetId]);
 
   const submit = async () => {
     if (!Number.isFinite(serviceId)) {
@@ -94,7 +100,7 @@ export default function BookAppointmentScreen() {
     if (!token || userId == null) {
       Alert.alert(t("bookAppointment.needLoginTitle"), t("bookAppointment.needLoginBody"), [
         { text: t("common.cancel"), style: "cancel" },
-        { text: t("bookAppointment.goLogin"), onPress: () => router.push("/login") },
+        { text: t("bookAppointment.goLogin"), onPress: () => router.push({ pathname: "/login", params: { signInUser: "1" } }) },
       ]);
       return;
     }
@@ -162,7 +168,7 @@ export default function BookAppointmentScreen() {
         {!token || userId == null ? (
           <View style={styles.banner}>
             <Text style={styles.bannerTxt}>{t("bookAppointment.signInHint")}</Text>
-            <TouchableOpacity style={styles.bannerBtn} onPress={() => router.push("/login")}>
+            <TouchableOpacity style={styles.bannerBtn} onPress={() => router.push({ pathname: "/login", params: { signInUser: "1" } })}>
               <Text style={styles.bannerBtnTxt}>{t("bookAppointment.goLogin")}</Text>
             </TouchableOpacity>
           </View>
