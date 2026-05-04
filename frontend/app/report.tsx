@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -18,26 +18,137 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from "expo-image";
 import * as Location from 'expo-location';
+import { useLanguage } from '../contexts/LanguageContext';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_BASE_URL, parseResponseJson } from "../lib/api";
 
-// Fancier report screen with updated styles
+type MapVet = {
+  id: number;
+  display_name: string;
+  latitude: number;
+  longitude: number;
+  address_line?: string | null;
+  city?: string | null;
+  verified: boolean;
+};
+
+type VetWithKm = MapVet & { km?: number };
+
+function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function parseLatLng(text: string): { latitude?: number; longitude?: number; address_text?: string } {
+  const loc = text.trim();
+  const parts = loc.split(/[,\s]+/).map((x) => Number(x.trim())).filter((n) => Number.isFinite(n));
+  if (parts.length >= 2) {
+    return { latitude: parts[0], longitude: parts[1], address_text: loc };
+  }
+  return { address_text: loc || undefined };
+}
+
 export default function ReportScreen() {
-  const [description, setDescription] = useState('');
+  const { t } = useLanguage();
   const [location, setLocation] = useState('');
-  const [contact, setContact] = useState('');
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [vetList, setVetList] = useState<MapVet[]>([]);
+  const [vetLoadErr, setVetLoadErr] = useState('');
+  const [selectedVetId, setSelectedVetId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [animalType, setAnimalType] = React.useState('');
+  const [injury, setInjury] = React.useState('');
+  const [condition, setCondition] = React.useState('');
+  const [urgency, setUrgency] = React.useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/organizations/map`);
+        const parsed = await parseResponseJson<{ organizations?: MapVet[] }>(res);
+        if (cancelled) return;
+        if (!parsed.ok || !parsed.data?.organizations) {
+          setVetLoadErr(t("report.loadVetsError"));
+          return;
+        }
+        const rows = parsed.data.organizations.filter(
+          (o) => o && Number.isFinite(Number(o.latitude)) && Number.isFinite(Number(o.longitude))
+        );
+        setVetList(rows);
+      } catch {
+        if (!cancelled) setVetLoadErr(t("report.loadVetsError"));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
+  const coordsForSort = useMemo(() => {
+    const g = parseLatLng(location);
+    if (g.latitude != null && g.longitude != null) return { lat: g.latitude, lng: g.longitude };
+    return userCoords;
+  }, [location, userCoords]);
+
+  const sortedVets = useMemo((): VetWithKm[] => {
+    if (!vetList.length) return [];
+    if (!coordsForSort) return vetList.slice(0, 12).map((o) => ({ ...o }));
+    return [...vetList]
+      .map((o) => ({
+        ...o,
+        km: distanceKm(coordsForSort.lat, coordsForSort.lng, o.latitude, o.longitude),
+      }))
+      .sort((a, b) => a.km - b.km)
+      .slice(0, 12);
+  }, [vetList, coordsForSort]);
 
   const handleSubmit = async () => {
-    if (!description || !location || !contact) {
-      Alert.alert("Missing info", "Please fill in all fields so we can help the animal as quickly as possible.");
+    const detail = [animalType, injury, condition, urgency].filter((s) => s.trim()).join("\n");
+    if (!detail.trim() || !location.trim()) {
+      Alert.alert(t('report.alertMissingTitle'), t('report.alertMissingBody'));
       return;
     }
     setSubmitting(true);
     try {
-      await new Promise(res => setTimeout(res, 2000)); // Simulated API
-      Alert.alert("Success!", "Report submitted. Help is on the way!");
+      const token = await AsyncStorage.getItem("token");
+      const geo = parseLatLng(location);
+      const title = [animalType.trim(), urgency.trim()].filter(Boolean).join(" · ") || "Injury report";
+      const body = {
+        title,
+        description: detail.trim(),
+        photo_url: photoUris[0] || null,
+        latitude: geo.latitude ?? userCoords?.lat ?? null,
+        longitude: geo.longitude ?? userCoords?.lng ?? null,
+        address_text: geo.address_text ?? location.trim(),
+        target_organization_id: selectedVetId ?? undefined,
+      };
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      const res = await fetch(`${API_BASE_URL}/api/reports`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      if (!res.ok) {
+        throw new Error(data.error || data.message || res.statusText);
+      }
+      Alert.alert(t('report.alertSuccessTitle'), t('report.alertSuccessBody'));
       router.back();
     } catch (e) {
-      Alert.alert("Error", "Something went wrong. Please check your connection.");
+      Alert.alert(t('report.alertErrorTitle'), e instanceof Error ? e.message : t('report.alertErrorBody'));
     } finally {
       setSubmitting(false);
     }
@@ -55,7 +166,7 @@ export default function ReportScreen() {
       if (source === "gallery") {
         permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permissionResult.granted) {
-          Alert.alert("Permission Required", "You need to grant photo library access to select images.");
+          Alert.alert(t('report.permGalleryTitle'), t('report.permGalleryBody'));
           setIsLoading(false);
           return;
         }
@@ -75,7 +186,7 @@ export default function ReportScreen() {
       } else {
         permissionResult = await ImagePicker.requestCameraPermissionsAsync();
         if (!permissionResult.granted) {
-          Alert.alert("Permission Required", "You need to grant camera access to take a photo.");
+          Alert.alert(t('report.permCameraTitle'), t('report.permCameraBody'));
           setIsLoading(false);
           return;
         }
@@ -90,9 +201,9 @@ export default function ReportScreen() {
         }
       }
     } catch (e) {
-      Alert.alert("Error", source === "gallery" 
-        ? "There was a problem accessing your photo library."
-        : "There was a problem accessing your camera.");
+      Alert.alert(t('report.alertErrorTitle'), source === "gallery"
+        ? t('report.pickErrorGallery')
+        : t('report.pickErrorCamera'));
     } finally {
       setIsLoading(false);
     }
@@ -105,16 +216,6 @@ export default function ReportScreen() {
     setPhotoUris((prev) => prev.filter(item => item !== uri));
   };
 
-
-  // Generic state and handlers for all values that threw errors:
-  const [animalType, setAnimalType] = React.useState<string>('');
-  const [injury, setInjury] = React.useState<string>('');
-  const [condition, setCondition] = React.useState<string>('');
-  const [urgency, setUrgency] = React.useState<string>('');
-
-  // Optionally, some generic handlers if you want to call set* functions in form controls more simply:
-  // Example usage: onValueChange={setAnimalType}
-  // (Omit if not needed.)
   return (
     <KeyboardAvoidingView 
       style={styles.mainContainer} 
@@ -132,8 +233,8 @@ export default function ReportScreen() {
         >
           <Ionicons name="chevron-back" size={28} color="#066958" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} accessibilityRole="header" accessibilityLabel="New Report">
-          New Report
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          {t('report.headerTitle')}
         </Text>
         <View style={{ width: 28 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
       </View>
@@ -150,13 +251,13 @@ export default function ReportScreen() {
             <MaterialCommunityIcons name="alert-circle" size={26} color="#FFD600" style={{ position: 'absolute', bottom: 3, right: 3 }} />
        
           </View>
-          <Text style={styles.title}>🐾 Report a Case</Text>
-          <Text style={styles.subtitle}>Provide details to notify nearby clinics and rescuers.</Text>
+          <Text style={styles.heroTitle}>{t('report.title')}</Text>
+          <Text style={styles.subtitle}>{t('report.subtitle')}</Text>
         </View>
 
         {/* Upload or Take Picture Section */}
-        <View style={styles.inputWrapper}>
-          <Text style={styles.label}>Photo</Text>
+        <View style={[styles.surfaceCard, styles.inputWrapper]}>
+          <Text style={styles.label}>{t('report.labelPhoto')}</Text>
           <View style={styles.photoButtonRow}>
             <TouchableOpacity
               disabled={isLoading}
@@ -164,7 +265,7 @@ export default function ReportScreen() {
               onPress={handlePickImage}
             >
               <Ionicons name="image-outline" size={22} color="#30AEA9" />
-              <Text style={styles.uploadBtnText}>Upload Image</Text>
+              <Text style={styles.uploadBtnText}>{t('report.uploadImage')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.uploadBtn, styles.takeBtnFancy]}
@@ -172,7 +273,7 @@ export default function ReportScreen() {
               onPress={handleTakePhoto}
             >
               <Ionicons name="camera-outline" size={22} color="#183362" />
-              <Text style={[styles.uploadBtnText, {color: "#183362"}]}>Take Photo</Text>
+              <Text style={[styles.uploadBtnText, {color: "#183362"}]}>{t('report.takePhoto')}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.photoPreviewGrid}>
@@ -197,16 +298,16 @@ export default function ReportScreen() {
             ))}
           </View>
         </View>
-  
+
         <View style={styles.formCard}>
-          {/* --- Description Input (Animal type, Visible injury, Condition, Urgency level) --- */}
+          <Text style={styles.sectionTitle}>{t("report.sectionDetails")}</Text>
           <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Animal type</Text>
+            <Text style={styles.label}>{t('report.labelAnimalType')}</Text>
             <View style={[styles.inputContainer, styles.fancyInputContainer]}>
               <Ionicons name="paw-outline" size={21} color="#8aa5c6" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, styles.fancyInput]}
-                placeholder="E.g. Cat, Dog, Bird"
+                placeholder={t('report.phAnimalType')}
                 value={animalType}
                 onChangeText={setAnimalType}
                 placeholderTextColor="#9EC4B2"
@@ -215,12 +316,12 @@ export default function ReportScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Visible injury</Text>
+            <Text style={styles.label}>{t('report.labelInjury')}</Text>
             <View style={[styles.inputContainer, styles.fancyInputContainer]}>
               <Ionicons name="bandage-outline" size={21} color="#8aa5c6" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, styles.fancyInput]}
-                placeholder="Describe the visible injury"
+                placeholder={t('report.phInjury')}
                 value={injury}
                 onChangeText={setInjury}
                 placeholderTextColor="#9EC4B2"
@@ -229,12 +330,12 @@ export default function ReportScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Condition (bleeding / unable to move)</Text>
+            <Text style={styles.label}>{t('report.labelCondition')}</Text>
             <View style={[styles.inputContainer, styles.fancyInputContainer]}>
               <Ionicons name="pulse-outline" size={21} color="#8aa5c6" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, styles.fancyInput]}
-                placeholder="E.g. Bleeding, can't move"
+                placeholder={t('report.phCondition')}
                 value={condition}
                 onChangeText={setCondition}
                 placeholderTextColor="#9EC4B2"
@@ -243,63 +344,121 @@ export default function ReportScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Urgency level</Text>
+            <Text style={styles.label}>{t('report.labelUrgency')}</Text>
             <View style={[styles.inputContainer, styles.fancyInputContainer]}>
               <Ionicons name="alert-circle-outline" size={21} color="#8aa5c6" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, styles.fancyInput]}
-                placeholder="E.g. High, Medium, Low"
+                placeholder={t('report.phUrgency')}
                 value={urgency}
                 onChangeText={setUrgency}
                 placeholderTextColor="#9EC4B2"
               />
             </View>
           </View>
- 
+
+          <Text style={[styles.sectionTitle, { marginTop: 8 }]}>{t("report.sectionLocation")}</Text>
 
           {/* --- Location Input --- */}
           <View style={styles.inputWrapper}>
             <View style={styles.locationRow}>
-              <Text style={styles.locationLabel}>Location</Text>
+              <Text style={styles.locationLabel}>{t('report.locationLabel')}</Text>
               <TouchableOpacity
                 onPress={async () => {
                   const { granted } = await Location.requestForegroundPermissionsAsync();
                   if (!granted) {
-                    Alert.alert("Permission Denied", "Enable location access in settings.");
+                    Alert.alert(t('report.permLocDeniedTitle'), t('report.permLocDeniedBody'));
                     return;
                   }
                   const loc = await Location.getCurrentPositionAsync({});
-                  setLocation(`${loc.coords.latitude}, ${loc.coords.longitude}`);
+                  const lat = loc.coords.latitude;
+                  const lng = loc.coords.longitude;
+                  setUserCoords({ lat, lng });
+                  setLocation(`${lat}, ${lng}`);
                 }}
                 style={styles.locationBtn}
                 accessibilityLabel="Use my current location"
               >
                 <Ionicons name="locate" size={16} color="#fff" style={{ marginRight: 5 }} />
-                <Text style={styles.locationBtnText}>Use Current Location</Text>
+                <Text style={styles.locationBtnText}>{t('report.useCurrentLocation')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.locationInputRow}>
               <Ionicons name="location-outline" size={21} color="#8aa5c6" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, styles.fancyInput, styles.locationInput]}
-                placeholder="Street name, landmark, or GPS"
+                placeholder={t('report.phLocation')}
                 value={location}
                 onChangeText={setLocation}
                 placeholderTextColor="#B6CCD3"
               />
-              {/* More location options */}
-              <TouchableOpacity
-                onPress={() => {
-                  router.push("/map");
-                }}
-                style={styles.locationMoreBtn}
-                accessibilityLabel="More location options"
-              >
-                <Ionicons name="ellipsis-horizontal" size={18} color="#3F7AB8" />
-              </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              onPress={async () => {
+                const { granted } = await Location.requestForegroundPermissionsAsync();
+                if (!granted) {
+                  Alert.alert(t("report.permLocDeniedTitle"), t("report.permLocDeniedBody"));
+                  return;
+                }
+                const loc = await Location.getCurrentPositionAsync({});
+                setUserCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+              }}
+              style={styles.gpsHintBtn}
+            >
+              <Ionicons name="navigate-outline" size={16} color="#0d9488" />
+              <Text style={styles.gpsHintTxt}>{t("report.useLocationForVets")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/map")}
+              style={styles.openMapRow}
+              accessibilityLabel="Open provider map"
+            >
+              <Ionicons name="map-outline" size={20} color="#15803d" />
+              <Text style={styles.openMapTxt}>{t("homeHub.browseProviders")}</Text>
+              <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+            </TouchableOpacity>
           </View>
-    
+
+          <Text style={[styles.sectionTitle, { marginTop: 14 }]}>{t("report.sectionVet")}</Text>
+          <Text style={styles.sectionHint}>{t("report.nearestVetHint")}</Text>
+          {vetLoadErr ? <Text style={styles.vetErr}>{vetLoadErr}</Text> : null}
+          {sortedVets.length === 0 ? (
+            <Text style={styles.sectionHint}>{t("report.noVetsNearby")}</Text>
+          ) : (
+            sortedVets.map((v) => {
+              const km = typeof v.km === "number" ? v.km : null;
+              const sel = selectedVetId === v.id;
+              return (
+                <TouchableOpacity
+                  key={v.id}
+                  style={[styles.vetRow, sel && styles.vetRowSelected]}
+                  onPress={() => setSelectedVetId(sel ? null : v.id)}
+                  activeOpacity={0.85}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.vetName}>{v.display_name}</Text>
+                    <Text style={styles.vetSub} numberOfLines={1}>
+                      {[v.address_line, v.city].filter(Boolean).join(" · ") || "—"}
+                    </Text>
+                  </View>
+                  <View style={styles.vetMeta}>
+                    {km != null ? (
+                      <Text style={styles.vetKm}>{t("report.distanceKm", { km: km.toFixed(1) })}</Text>
+                    ) : null}
+                    <View style={[styles.vetBadge, v.verified ? styles.vetBadgeOk : styles.vetBadgeWait]}>
+                      <Text style={styles.vetBadgeTxt}>
+                        {v.verified ? t("map.verifiedBadge") : t("map.pendingBadge")}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
+          {selectedVetId != null ? (
+            <Text style={styles.vetSelectedNote}>{t("report.vetSelected")}</Text>
+          ) : null}
+
           {/* --- Contact Input --- */}
           {/* <View style={styles.inputWrapper}>
             <Text style={styles.label}>Your Contact Info</Text>
@@ -325,7 +484,7 @@ export default function ReportScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={styles.submitBtnText}>Submit Report</Text>
+                <Text style={styles.submitBtnText}>{t('report.submitReport')}</Text>
                 <Ionicons name="send" size={18} color="#fff" style={{ marginLeft: 8 }} />
               </>
             )}
@@ -417,14 +576,99 @@ const styles = StyleSheet.create({
     textShadowOffset: {width: 0, height: 2},
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#226950",
     textAlign: "center",
-    marginTop: 9,
-    paddingHorizontal: 28,
-    lineHeight: 22,
-    fontStyle: "italic",
-    letterSpacing: 0.25,
+    marginTop: 8,
+    paddingHorizontal: 22,
+    lineHeight: 21,
+    letterSpacing: 0.15,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#183362",
+    marginTop: 10,
+    textAlign: "center",
+    paddingHorizontal: 12,
+    letterSpacing: 0.2,
+  },
+  surfaceCard: {
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderWidth: 1,
+    borderColor: "#ccf7e8",
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0f766e",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 12,
+    marginTop: 2,
+  },
+  sectionHint: {
+    fontSize: 13,
+    color: "#64748b",
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  vetErr: { color: "#b45309", fontSize: 13, marginBottom: 8 },
+  gpsHintBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  gpsHintTxt: { fontSize: 13, fontWeight: "600", color: "#0d9488" },
+  openMapRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "#f0fdf4",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+  },
+  openMapTxt: { flex: 1, fontSize: 15, fontWeight: "700", color: "#14532d" },
+  vetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    backgroundColor: "#fafafa",
+    marginBottom: 8,
+  },
+  vetRowSelected: {
+    borderColor: "#2dd4bf",
+    backgroundColor: "#ecfdf5",
+  },
+  vetName: { fontSize: 15, fontWeight: "800", color: "#0f172a" },
+  vetSub: { fontSize: 12, color: "#64748b", marginTop: 2 },
+  vetMeta: { alignItems: "flex-end", gap: 4, marginLeft: 8 },
+  vetKm: { fontSize: 12, fontWeight: "700", color: "#0f766e" },
+  vetBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  vetBadgeOk: { backgroundColor: "#dcfce7" },
+  vetBadgeWait: { backgroundColor: "#ffedd5" },
+  vetBadgeTxt: { fontSize: 10, fontWeight: "800", color: "#14532d" },
+  vetSelectedNote: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#047857",
+    marginTop: 4,
+    marginBottom: 4,
   },
   formCard: {
     backgroundColor: 'rgba(255,255,255,0.95)',

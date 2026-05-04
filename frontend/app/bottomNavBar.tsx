@@ -3,10 +3,11 @@ import { Platform, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
-
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function BottomNavBar() {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   return (
     <BlurView
@@ -33,30 +34,30 @@ export default function BottomNavBar() {
             (pathname === '/home' || pathname === '/') && styles.activeNav,
           ]}
         >
-          Home
+          {t('nav.home')}
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.navItemWrap}
         onPress={() => {
-          if (pathname !== '/map') {
-            router.push('/map');
+          if (pathname !== '/search') {
+            router.push('/search');
           }
         }}
       >
         <Ionicons
-          name="map-outline"
+          name="search-outline"
           size={22}
-          color={pathname === '/map' ? "#3b6811" : "rgba(60,60,50,0.45)"}
+          color={pathname === '/search' ? "#3b6811" : "rgba(60,60,50,0.45)"}
         />
         <Text
           style={[
             styles.navItem,
-            pathname === '/map' && styles.activeNav,
+            pathname === '/search' && styles.activeNav,
           ]}
         >
-          Map
+          {t('nav.search')}
         </Text>
       </TouchableOpacity>
 
@@ -90,7 +91,7 @@ export default function BottomNavBar() {
             pathname === '/cases' && styles.activeNav,
           ]}
         >
-          Cases
+          {t('nav.cases')}
         </Text>
       </TouchableOpacity>
 
@@ -113,7 +114,7 @@ export default function BottomNavBar() {
             pathname === '/profile' && styles.activeNav,
           ]}
         >
-          Profile
+          {t('nav.profile')}
         </Text>
       </TouchableOpacity>
     </BlurView>

@@ -2,16 +2,18 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View, Platform } from "react-native";
+import { LanguageProvider, useLanguage } from "../contexts/LanguageContext";
 
-// Dark mode removed: always use light theme
 function ThemedApp() {
-  const backgroundColor = "#E6E3D7"; // light color
+  const backgroundColor = "#E6E3D7";
+  const { isRTL } = useLanguage();
 
   return (
     <View style={{
       flex: 1,
       backgroundColor: backgroundColor,
       paddingTop: Platform.OS === "android" ? 24 : 0,
+      direction: isRTL ? "rtl" : "ltr",
     }}>
       <Stack
         screenOptions={{
@@ -21,8 +23,23 @@ function ThemedApp() {
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" options={{ presentation: "card" }} />
-        <Stack.Screen name="sign" options={{ presentation: "card" }} />
         <Stack.Screen name="home" options={{ presentation: "card" }} />
+        <Stack.Screen name="notifications" options={{ presentation: "card" }} />
+        <Stack.Screen name="search" options={{ presentation: "card" }} />
+        <Stack.Screen name="org-services" options={{ presentation: "card" }} />
+        <Stack.Screen name="org-pending" options={{ presentation: "card" }} />
+        <Stack.Screen name="staff-calendar" options={{ presentation: "card" }} />
+        <Stack.Screen name="org-dashboard" options={{ presentation: "card" }} />
+        <Stack.Screen name="org-profile-settings" options={{ presentation: "card" }} />
+        <Stack.Screen name="provider-catalog" options={{ presentation: "card" }} />
+        <Stack.Screen name="map" options={{ presentation: "card" }} />
+        <Stack.Screen name="browse-services" options={{ presentation: "card" }} />
+        <Stack.Screen name="provider-profile" options={{ presentation: "card" }} />
+        <Stack.Screen name="book-service" options={{ presentation: "card" }} />
+        <Stack.Screen name="book-appointment" options={{ presentation: "card" }} />
+        <Stack.Screen name="reports" options={{ presentation: "card" }} />
+        <Stack.Screen name="org-reports" options={{ presentation: "card" }} />
+        <Stack.Screen name="admin-dashboard" options={{ presentation: "card" }} />
       </Stack>
       <StatusBar style="dark" backgroundColor={backgroundColor} />
     </View>
@@ -32,7 +49,9 @@ function ThemedApp() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <ThemedApp />
+      <LanguageProvider>
+        <ThemedApp />
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }

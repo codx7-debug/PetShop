@@ -12,11 +12,13 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   return (
     <LinearGradient 
@@ -63,15 +65,17 @@ export default function HomeScreen() {
 
             <View style={styles.textSection}>
               <View style={styles.chip}>
-                <Text style={styles.chipText}>PETORA ECOSYSTEM</Text>
+                <Text style={styles.chipText}>{t("home.chip")}</Text>
               </View>
               
               <Text style={styles.headline}>
-                Yaralı bir <Text style={styles.highlight}>dosta</Text>{"\n"}hemen yardım et
+                {t("home.headlinePart1")}
+                <Text style={styles.highlight}>{t("home.headlineHighlight")}</Text>
+                {t("home.headlinePart2")}
               </Text>
               
               <Text style={styles.description}>
-                Vaka bildir, en yakın kliniği bul ve hayat kurtarmak için saniyelerle yarış.
+                {t("home.description")}
               </Text>
             </View>
           </View>
@@ -82,16 +86,16 @@ export default function HomeScreen() {
               <View style={[styles.iconBox, { backgroundColor: '#FFF0EE' }]}>
                 <Text style={styles.emoji}>🚑</Text>
               </View>
-              <Text style={styles.featureTitle}>Acil Bildirim</Text>
-              <Text style={styles.featureSubtitle}>Hızlı Vaka Aç</Text>
+              <Text style={styles.featureTitle}>{t("home.feature1Title")}</Text>
+              <Text style={styles.featureSubtitle}>{t("home.feature1Subtitle")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity activeOpacity={0.9} style={styles.featureCard}>
               <View style={[styles.iconBox, { backgroundColor: '#EEF7FF' }]}>
                 <Text style={styles.emoji}>📍</Text>
               </View>
-              <Text style={styles.featureTitle}>Yakın Klinik</Text>
-              <Text style={styles.featureSubtitle}>Nöbetçi Bul</Text>
+              <Text style={styles.featureTitle}>{t("home.feature2Title")}</Text>
+              <Text style={styles.featureSubtitle}>{t("home.feature2Subtitle")}</Text>
             </TouchableOpacity>
           </View>
 
@@ -102,11 +106,11 @@ export default function HomeScreen() {
               style={styles.mainBtn} 
               onPress={() => router.push("/login")}
             >
-              <Text style={styles.mainBtnText}>Acil Yardımı Başlat</Text>
+              <Text style={styles.mainBtnText}>{t("home.btnStart")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.secondaryBtn}>
-              <Text style={styles.secondaryBtnText}>İlk Yardım Rehberini Gör</Text>
+              <Text style={styles.secondaryBtnText}>{t("home.btnGuide")}</Text>
             </TouchableOpacity>
           </View>
           

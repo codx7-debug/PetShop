@@ -1,30 +1,30 @@
 import React from 'react';
-import { View, Text, Switch, StyleSheet, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  Switch,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
 import BottomNavBar from './bottomNavBar';
-
-const mockSettings = [
-  {
-    key: 'notifications',
-    label: 'Bildirimleri Aç/Kapat',
-    description: 'Uygulamadan bildirim al.',
-    defaultValue: true,
-  },
-  // Dark mode removed for now
-  {
-    key: 'locationServices',
-    label: 'Konum Servisleri',
-    description: 'Yakındaki klinikleri/satıcıları bulmak için konumunu kullan.',
-    defaultValue: true,
-  },
-];
+import { useLanguage } from '../contexts/LanguageContext';
+import {
+  AppLocale,
+  LOCALE_NAMES,
+  SUPPORTED_LOCALES,
+} from '../i18n/translations';
 
 export default function SettingsPage() {
-  const [settings, setSettings] = React.useState(() =>
-    Object.fromEntries(mockSettings.map((s) => [s.key, s.defaultValue]))
-  );
+  const { t, locale, setLocale, isRTL } = useLanguage();
+
+  const [settings, setSettings] = React.useState({
+    notifications: true,
+    locationServices: true,
+  });
   const [locationSet, setLocationSet] = React.useState(false);
   const [locationLoading, setLocationLoading] = React.useState(false);
 
@@ -60,7 +60,6 @@ export default function SettingsPage() {
     if (!locationSet) await handleSetLocation();
   };
 
-  // Use fixed light colors (dark mode removed)
   const textTitleColor = '#036672';
   const itemBg = '#fff';
   const labelColor = '#00695c';
@@ -77,7 +76,14 @@ export default function SettingsPage() {
       ]}
       edges={['top']}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingTop: 8 }}>
+      <View
+        style={{
+          flexDirection: isRTL ? 'row-reverse' : 'row',
+          alignItems: 'center',
+          paddingHorizontal: 8,
+          paddingTop: 8,
+        }}
+      >
         <Text
           onPress={() => require('expo-router').router.back()}
           style={{
@@ -91,21 +97,83 @@ export default function SettingsPage() {
           }}
           suppressHighlighting={true}
         >
-          {'‹'}
+          {isRTL ? '›' : '‹'}
         </Text>
-        <Text style={{ fontSize: 17, fontWeight: '500', marginLeft: 4, color: geriTextColor }}>
-          Geri
+        <Text
+          style={{
+            fontSize: 17,
+            fontWeight: '500',
+            marginHorizontal: 4,
+            color: geriTextColor,
+            textAlign: isRTL ? 'right' : 'left',
+          }}
+        >
+          {t('common.back')}
         </Text>
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={[styles.pageTitle, { color: textTitleColor }]}>Ayarlar</Text>
+        <Text style={[styles.pageTitle, { color: textTitleColor }]}>{t('settings.title')}</Text>
         <ScrollView contentContainerStyle={styles.settingsList}>
-          {/* NOTIFICATIONS */}
-          <View style={[styles.settingItem, { backgroundColor: itemBg, borderColor: '#e0f2f1', shadowColor: '#03667222' }]}>
+          <View
+            style={[
+              styles.blockCard,
+              { backgroundColor: itemBg, borderColor: '#e0f2f1', shadowColor: '#03667222' },
+            ]}
+          >
+            <Text style={[styles.sectionLabel, { color: labelColor }]}>{t('settings.languageTitle')}</Text>
+            <Text style={[styles.languageHint, { color: descColor }]}>{t('settings.languageHint')}</Text>
+            <View
+              style={[
+                styles.langRow,
+                { flexDirection: isRTL ? 'row-reverse' : 'row' },
+              ]}
+            >
+              {SUPPORTED_LOCALES.map((code) => {
+                const active = locale === code;
+                return (
+                  <TouchableOpacity
+                    key={code}
+                    activeOpacity={0.85}
+                    onPress={() => void setLocale(code)}
+                    style={[
+                      styles.langChip,
+                      active && styles.langChipActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.langChipText,
+                        active && styles.langChipTextActive,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {LOCALE_NAMES[code as AppLocale]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.settingItem,
+              {
+                backgroundColor: itemBg,
+                borderColor: '#e0f2f1',
+                shadowColor: '#03667222',
+                flexDirection: isRTL ? 'row-reverse' : 'row',
+              },
+            ]}
+          >
             <View style={{ flex: 1 }}>
-              <Text style={[styles.settingLabel, { color: labelColor }]}>{mockSettings[0].label}</Text>
-              <Text style={[styles.settingDesc, { color: descColor }]}>{mockSettings[0].description}</Text>
+              <Text style={[styles.settingLabel, { color: labelColor }]}>
+                {t('settings.notificationsLabel')}
+              </Text>
+              <Text style={[styles.settingDesc, { color: descColor }]}>
+                {t('settings.notificationsDesc')}
+              </Text>
             </View>
             <Switch
               value={settings.notifications}
@@ -115,16 +183,27 @@ export default function SettingsPage() {
             />
           </View>
 
-          {/* LOCATION */}
-          <View style={[styles.settingItem, { backgroundColor: itemBg, borderColor: '#e0f2f1', shadowColor: '#03667222' }]}>
+          <View
+            style={[
+              styles.settingItem,
+              {
+                backgroundColor: itemBg,
+                borderColor: '#e0f2f1',
+                shadowColor: '#03667222',
+                flexDirection: isRTL ? 'row-reverse' : 'row',
+              },
+            ]}
+          >
             <View style={{ flex: 1 }}>
-              <Text style={[styles.settingLabel, { color: labelColor }]}>{mockSettings[1].label}</Text>
+              <Text style={[styles.settingLabel, { color: labelColor }]}>
+                {t('settings.locationLabel')}
+              </Text>
               <Text style={[styles.settingDesc, { color: descColor }]}>
                 {locationSet
-                  ? 'Konum başarıyla ayarlandı.'
+                  ? t('settings.locationSuccess')
                   : locationLoading
-                  ? 'Konum alınırken bekleyiniz...'
-                  : mockSettings[1].description}
+                    ? t('settings.locationLoading')
+                    : t('settings.locationDesc')}
               </Text>
             </View>
             <Switch
@@ -152,18 +231,49 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   settingsList: { paddingHorizontal: 18, paddingBottom: 80, gap: 16 },
+  blockCard: {
+    borderRadius: 14,
+    padding: 16,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    elevation: 1,
+    shadowColor: '#03667222',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.09,
+    shadowRadius: 5,
+    borderWidth: 1,
+    borderColor: '#e0f2f1',
+    marginBottom: 2,
+  },
+  sectionLabel: { fontSize: 17, fontWeight: '700', marginBottom: 6 },
+  languageHint: { fontSize: 12, opacity: 0.85, marginBottom: 12 },
+  langRow: { flexWrap: 'wrap', gap: 8 },
+  langChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#f0fdfa',
+    borderWidth: 1,
+    borderColor: '#b2dfdb',
+  },
+  langChipActive: {
+    backgroundColor: '#036672',
+    borderColor: '#036672',
+  },
+  langChipText: { fontSize: 14, fontWeight: '600', color: '#00695c' },
+  langChipTextActive: { color: '#fff' },
   settingItem: {
     borderRadius: 14,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     elevation: 1,
-    shadowColor: '#03667222', // overridden inline
+    shadowColor: '#03667222',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.09,
     shadowRadius: 5,
     borderWidth: 1,
-    borderColor: '#e0f2f1', // overridden inline
+    borderColor: '#e0f2f1',
     marginBottom: 2,
   },
   settingLabel: { fontSize: 17, fontWeight: '700', marginBottom: 4 },

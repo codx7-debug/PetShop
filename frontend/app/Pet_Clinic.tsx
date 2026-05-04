@@ -9,6 +9,8 @@ import {
   Modal,
 } from 'react-native';
 import BottomNavBar from './bottomNavBar';
+import { useLanguage } from '../contexts/LanguageContext';
+import { router } from 'expo-router';
 
 interface Clinic {
   id: string;
@@ -111,6 +113,7 @@ const CLINICS: Clinic[] = [
 ];
 
 const PetClinicPage: React.FC = () => {
+  const { t } = useLanguage();
   const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
 
   return (
@@ -141,7 +144,7 @@ const PetClinicPage: React.FC = () => {
             }}
             numberOfLines={1}
           >
-            Klinik ara...
+            {t('listingClinic.searchPlaceholder')}
           </Text>
         </View>
         <TouchableOpacity
@@ -170,7 +173,18 @@ const PetClinicPage: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.pageTitle}>Pet Clinics</Text>
+        <TouchableOpacity
+          style={styles.liveProvidersBanner}
+          activeOpacity={0.9}
+          onPress={() =>
+            router.push({ pathname: '/browse-services', params: { orgType: 'vet' } })
+          }
+        >
+          <Text style={styles.liveProvidersTitle}>{t('listingClinic.browseRealProviders')}</Text>
+          <Text style={styles.liveProvidersSub}>{t('listingClinic.browseRealProvidersSub')}</Text>
+          <Text style={styles.liveProvidersCta}>{t('listingClinic.partnerCta')} →</Text>
+        </TouchableOpacity>
+        <Text style={styles.pageTitle}>{t('listingClinic.pageTitle')}</Text>
         <View style={styles.listContainer}>
           {CLINICS.map(clinic => (
             <TouchableOpacity
@@ -183,7 +197,7 @@ const PetClinicPage: React.FC = () => {
               <View style={styles.infoCol}>
                 <Text style={styles.clinicNameSmall}>{clinic.name}</Text>
                 <Text style={styles.clinicLocSmall} numberOfLines={1}>📍 {clinic.location}</Text>
-                <Text style={styles.clinicFeeSmall}>₺{clinic.consultationFee} / muayene</Text>
+                <Text style={styles.clinicFeeSmall}>₺{clinic.consultationFee}{t('listingClinic.perVisit')}</Text>
                 <View style={styles.ratingRow}>
                   <Text style={styles.ratingStar}>⭐</Text>
                   <Text style={styles.ratingValue}>{clinic.rating}</Text>
@@ -218,9 +232,9 @@ const PetClinicPage: React.FC = () => {
                     <Text style={styles.ratingValue}>{selectedClinic.rating}</Text>
                   </View>
                   <View style={styles.divider} />
-                  <Text style={styles.sectionTitle}>Hakkında</Text>
+                  <Text style={styles.sectionTitle}>{t('listingClinic.about')}</Text>
                   <Text style={styles.description}>{selectedClinic.description}</Text>
-                  <Text style={styles.sectionTitle}>Hizmetler</Text>
+                  <Text style={styles.sectionTitle}>{t('listingClinic.services')}</Text>
                   <View style={styles.servicesContainer}>
                     {selectedClinic.services.map((s, idx) => (
                       <View key={idx} style={styles.serviceBadge}>
@@ -231,20 +245,24 @@ const PetClinicPage: React.FC = () => {
                   <View style={styles.bookingCard}>
                     <View style={styles.priceRow}>
                       <Text style={styles.price}>₺{selectedClinic.consultationFee}</Text>
-                      <Text style={styles.perSession}>/ muayene</Text>
+                      <Text style={styles.perSession}>{t('listingClinic.perVisit')}</Text>
                     </View>
-                    <TouchableOpacity style={styles.reserveButton}>
-                      <Text style={styles.reserveButtonText}>Randevu Al</Text>
+                    <TouchableOpacity
+                      style={styles.reserveButton}
+                      onPress={() => {
+                        setSelectedClinic(null);
+                        router.push({ pathname: '/browse-services', params: { orgType: 'vet' } });
+                      }}
+                    >
+                      <Text style={styles.reserveButtonText}>{t('listingClinic.reserve')}</Text>
                     </TouchableOpacity>
-                    <Text style={styles.cancelNote}>
-                      Randevunuzu en az 2 saat önceden ücretsiz iptal edebilirsiniz.
-                    </Text>
+                    <Text style={styles.cancelNote}>{t('listingClinic.cancelNote')}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.closeModalBtn}
                     onPress={() => setSelectedClinic(null)}
                   >
-                    <Text style={styles.closeModalText}>Kapat</Text>
+                    <Text style={styles.closeModalText}>{t('listingClinic.close')}</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
@@ -266,6 +284,32 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 32,
     paddingHorizontal: 0,
+  },
+  liveProvidersBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#e0f7fa',
+    borderWidth: 1,
+    borderColor: '#4dd0e1',
+  },
+  liveProvidersTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#006064',
+  },
+  liveProvidersSub: {
+    fontSize: 13,
+    color: '#00838f',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  liveProvidersCta: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#00897b',
+    marginTop: 10,
   },
   pageTitle: {
     fontSize: 25,

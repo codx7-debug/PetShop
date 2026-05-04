@@ -4,34 +4,94 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from "expo-router";
 import BottomNavBar from './bottomNavBar';
-import { push } from "expo-router/build/global-state/routing";
-// Removed dark mode support
+import { useLanguage } from "../contexts/LanguageContext";
+
+function rtlAlign(rtl: boolean) {
+  return {
+    writingDirection: (rtl ? "rtl" : "ltr") as "rtl" | "ltr",
+    textAlign: (rtl ? "right" : "left") as "auto" | "left" | "right" | "center",
+  };
+}
 
 export default function HomeScreen() {
-  // Dark mode removed: always use light colors
-  const backgroundColor = "#F8FAFC"; // Main page background
+  const { t, isRTL } = useLanguage();
+  const backgroundColor = "#F8FAFC";
+  const ta = rtlAlign(isRTL);
 
-  const SERVICES = [
-    { id: '1', title: 'Salon', icon: '✂️', color: '#FFF0ED', textColor: '#FF6F4E', route: '/petkuafer' },
-    { id: '2', title: 'Veteriner', icon: '🏥', color: '#E3FFF3', textColor: '#49A184', route: '/Pet_Clinic' },
-    { id: '3', title: 'Otel', icon: '🏨', color: '#FFF8E1', textColor: '#D4A017', route: '/Hotel' },
-    // { id: '4', title: 'Gezici', icon: '🚶', color: '#F0F2FF', textColor: '#5C6BC0' },
-    // { id: '5', title: 'Mağaza', icon: '🛒', color: '#FFF0F5', textColor: '#D81B60' },
-  ];
-
-  const [location, setLocation] = React.useState("Beşiktaş, İstanbul");
-
-  function handleLocationChange(newLocation: string) {
-    setLocation(newLocation);
-  }
+  const SERVICES = React.useMemo(
+    () =>
+      [
+        {
+          id: "1",
+          title: t("homeHub.serviceSalon"),
+          icon: "✂️",
+          color: "#FFF0ED",
+          textColor: "#FF6F4E",
+          orgType: "salon" as const,
+        },
+        {
+          id: "2",
+          title: t("homeHub.serviceVet"),
+          icon: "🏥",
+          color: "#E3FFF3",
+          textColor: "#49A184",
+          orgType: "vet" as const,
+        },
+        {
+          id: "3",
+          title: t("homeHub.serviceHotel"),
+          icon: "🏨",
+          color: "#FFF8E1",
+          textColor: "#D4A017",
+          orgType: "hotel" as const,
+        },
+        {
+          id: "4",
+          title: t("homeHub.servicePetshop"),
+          icon: "🛍️",
+          color: "#ECFDF5",
+          textColor: "#15803d",
+          orgType: "petshop" as const,
+        },
+        {
+          id: "5",
+          title: t("homeHub.serviceTrainer"),
+          icon: "🎓",
+          color: "#EEF2FF",
+          textColor: "#4338ca",
+          orgType: "trainer" as const,
+        },
+        {
+          id: "6",
+          title: t("homeHub.servicePetsitter"),
+          icon: "🏠",
+          color: "#F0FDFA",
+          textColor: "#0f766e",
+          orgType: "petsitter" as const,
+        },
+      ] as const,
+    [t]
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={["top"]}>
       <View style={styles.screen}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-          <View style={styles.headerRow}>
-            {/* Logo + Title */}
-            <View style={styles.logoTitleRow}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.content, { direction: isRTL ? "rtl" : "ltr" }]}
+        >
+          <View
+            style={[
+              styles.headerRow,
+              {
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                direction: "ltr",
+              },
+            ]}
+          >
+            <View style={[styles.logoTitleRow, { flex: 1 }]}>
               <View style={styles.logoBox}>
                 <Image
                   source={require('../components/logo2.png')}
@@ -39,71 +99,93 @@ export default function HomeScreen() {
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.logoText}>
-                <Text style={styles.logoTextMain}>Pet</Text>
-                <Text style={styles.logoTextAccent}>ora.</Text>
-              </Text>
             </View>
-            {/* Icons */}
-            <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.bellCircle}>
-                <Text style={styles.bellIcon}>🔔</Text>
-                <View style={styles.bellDot} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.profileCircle}>
-                <Text style={styles.profileIcon}>🦁</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          <View style={styles.locationRow}>
-            <Text style={styles.locationPin}>📍</Text>
-            <Text style={styles.locationLabel}>Konum: </Text>
-            <Text style={styles.locationValue}>Beşiktaş, İstanbul</Text>
-            <TouchableOpacity 
-              style={styles.locationDropdown}
-              onPress={() => {
-                // Static for now
-              }}
+            <TouchableOpacity
+              style={styles.bellCircle}
+              onPress={() => router.push("/notifications")}
+              accessibilityRole="button"
+              accessibilityLabel={t("notifications.title")}
             >
-              <Ionicons name="chevron-down" size={16} color="#858585" />
+              <Text style={styles.bellIcon}>🔔</Text>
+              <View style={styles.bellDot} />
             </TouchableOpacity>
           </View>
 
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: '#F6F8FA',
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            paddingHorizontal: 18,
-            paddingVertical: 12,
-            marginTop: 18,
-            marginBottom: 22,
-            marginHorizontal: 2,
-            minHeight: 54,
-          }}>
-            <Ionicons name="search" size={24} color="#6EC1E4" style={{ marginRight: 10 }} />
-            <Text style={{ color: "#9CA3AF", fontSize: 17, flex: 1 }}>
-              Salon, klinik veya otel ara...
-            </Text>
-            <TouchableOpacity
-              style={{
-                backgroundColor: "#FFF3ED",
-                borderRadius: 11,
-                paddingVertical: 5,
-                paddingHorizontal: 18,
-                marginLeft: 10,
-              }}
-              activeOpacity={0.8}
-              onPress={() => {
-                // Add your filter handler here
-              }}
-            >
-              <Text style={{ color: "#080202", fontSize: 16, fontWeight: '700' }}>
-                Filtre
+          <View
+            style={{
+              backgroundColor: '#0F0D0D',
+              borderRadius: 22,
+              padding: 20,
+              marginTop: 18,
+              marginBottom: 20,
+              marginHorizontal: 2,
+              flexDirection: isRTL ? "row-reverse" : "row",
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              shadowColor: "#21E7D8",
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 3,
+            }}
+          >
+            <View style={{ flex: 1, justifyContent: 'center' }}>
+              <View style={{ marginBottom: 7 }}>
+                <Text
+                  style={{
+                    backgroundColor: '#21E7D8',
+                    color: '#0A2239',
+                    fontWeight: 'bold',
+                    borderRadius: 9,
+                    fontSize: 12,
+                    paddingHorizontal: 11,
+                    paddingVertical: 3,
+                    alignSelf: isRTL ? "flex-end" : "flex-start",
+                    letterSpacing: 1,
+                    writingDirection: isRTL ? "rtl" : "ltr",
+                  }}
+                >
+                  {t('homeHub.specialOffer')}
+                </Text>
+              </View>
+              <Text
+                style={{
+                  color: '#FCFCFF',
+                  fontWeight: 'bold',
+                  fontSize: 22,
+                  marginBottom: 10,
+                  fontFamily: 'System',
+                  textShadowColor: 'rgba(19,154,176,0.24)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 4,
+                  textAlign: isRTL ? "right" : "left",
+                  writingDirection: isRTL ? "rtl" : "ltr",
+                }}
+              >
+                {t('homeHub.offerTitle')}
               </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#21E7D8',
+                  borderRadius: 9,
+                  alignSelf: isRTL ? "flex-end" : "flex-start",
+                  paddingHorizontal: 18,
+                  paddingVertical: 8,
+                  marginTop: 4,
+                }}
+                activeOpacity={0.90}
+                onPress={() => router.push('/Offers')}
+              >
+                <Text style={{
+                  color: '#0A2239',
+                  fontWeight: 'bold',
+                  fontSize: 15,
+                  writingDirection: isRTL ? "rtl" : "ltr",
+                }}>{t('homeHub.offerCta')}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ marginLeft: isRTL ? 0 : 18, marginRight: isRTL ? 18 : 0, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 60, marginTop: 8 }}>🐶</Text>
+            </View>
           </View>
         
           {/* -- Quick Actions Section -- */}
@@ -116,9 +198,10 @@ export default function HomeScreen() {
                 letterSpacing: 0.1,
                 marginBottom: 4,
                 paddingHorizontal: 2,
+                ...ta,
               }}
             >
-              Quick Actions
+              {t('homeHub.quickActions')}
             </Text>
             <Text
               style={{
@@ -128,13 +211,14 @@ export default function HomeScreen() {
                 marginBottom: 16,
                 paddingHorizontal: 2,
                 letterSpacing: 0.06,
+                ...ta,
               }}
             >
-              Get help fast for animals in need
+              {t('homeHub.quickActionsSub')}
             </Text>
             <View
               style={{
-                flexDirection: 'row',
+                flexDirection: isRTL ? "row-reverse" : "row",
                 gap: 14,
                 justifyContent: 'space-between',
                 marginHorizontal: -2,
@@ -196,31 +280,36 @@ export default function HomeScreen() {
                     color: "#158C92",
                     letterSpacing: 0.13,
                     marginBottom: 4,
-                    textAlign: 'center',
+                    textAlign: isRTL ? "right" : "center",
+                    writingDirection: isRTL ? "rtl" : "ltr",
+                    alignSelf: "stretch",
+                    paddingHorizontal: 4,
                   }}
                 >
-                  Report Injured Animal
+                  {t('homeHub.reportAnimal')}
                 </Text>
                 <Text
                   style={{
                     fontSize: 13.7,
                     color: "#4B7A79",
                     fontWeight: '400',
-                    textAlign: 'center',
+                    textAlign: isRTL ? "right" : "center",
+                    writingDirection: isRTL ? "rtl" : "ltr",
                     letterSpacing: 0.03,
+                    alignSelf: "stretch",
+                    paddingHorizontal: 4,
                   }}
                 >
-                  Start an emergency case now
+                  {t('homeHub.reportAnimalSub')}
                 </Text>
               </TouchableOpacity>
 
-              {/* Find Nearby Clinic (Secondary) */}
+              {/* Browse real providers & book */}
               <TouchableOpacity
                 onPress={() => router.push("/map")}
                 activeOpacity={0.82}
                 style={{
                   flex: 1,
-                  marginLeft: 7,
                   backgroundColor: '#F8FAFC',
                   borderRadius: 18,
                   alignItems: 'center',
@@ -256,96 +345,54 @@ export default function HomeScreen() {
                     color: "#20705A",
                     letterSpacing: 0.13,
                     marginBottom: 4,
-                    textAlign: 'center',
+                    textAlign: isRTL ? "right" : "center",
+                    writingDirection: isRTL ? "rtl" : "ltr",
+                    alignSelf: "stretch",
+                    paddingHorizontal: 4,
                   }}
                 >
-                  Find Nearby Clinic
+                  {t('homeHub.browseProviders')}
                 </Text>
                 <Text
                   style={{
                     fontSize: 13.7,
                     color: "#5C8679",
                     fontWeight: '400',
-                    textAlign: 'center',
+                    textAlign: isRTL ? "right" : "center",
+                    writingDirection: isRTL ? "rtl" : "ltr",
                     letterSpacing: 0.03,
+                    alignSelf: "stretch",
+                    paddingHorizontal: 4,
                   }}
                 >
-                  Discover trusted local vets
+                  {t('homeHub.browseProvidersSub')}
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
-
-          <View
-            style={{
-              backgroundColor: '#0F0D0D',
-              borderRadius: 22,
-              padding: 20,
-              marginBottom: 20,
-              marginHorizontal: 2,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              shadowColor: "#21E7D8",
-              shadowOpacity: 0.15,
-              shadowRadius: 12,
-              elevation: 3,
-            }}
-          >
-            <View style={{ flex: 1, justifyContent: 'center' }}>
-              <View style={{ marginBottom: 7 }}>
-                <Text
-                  style={{
-                    backgroundColor: '#21E7D8',
-                    color: '#0A2239',
-                    fontWeight: 'bold',
-                    borderRadius: 9,
-                    fontSize: 12,
-                    paddingHorizontal: 11,
-                    paddingVertical: 3,
-                    alignSelf: 'flex-start',
-                    letterSpacing: 1,
-                  }}
-                >
-                  {"✨  ÖZEL TEKLİF"}
-                </Text>
-              </View>
+            <TouchableOpacity
+              onPress={() => router.push("/reports")}
+              activeOpacity={0.85}
+              style={{
+                marginTop: 14,
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                borderRadius: 14,
+                backgroundColor: "#fff",
+                borderWidth: 1,
+                borderColor: "#d0ebe4",
+              }}
+            >
               <Text
                 style={{
-                  color: '#FCFCFF',
-                  fontWeight: 'bold',
-                  fontSize: 22,
-                  marginBottom: 10,
-                  fontFamily: 'System',
-                  textShadowColor: 'rgba(19,154,176,0.24)',
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 4,
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: "#20705a",
+                  textAlign: isRTL ? "right" : "center",
                 }}
               >
-                İlk randevunda{'\n'}%20 indirim kazan!
+                {t("reportsFeed.title")} →
               </Text>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#21E7D8',
-                  borderRadius: 9,
-                  alignSelf: 'flex-start',
-                  paddingHorizontal: 18,
-                  paddingVertical: 8,
-                  marginTop: 4,
-                }}
-                activeOpacity={0.90}
-                onPress={() => router.push('/Offers')}
-              >
-                <Text style={{
-                  color: '#0A2239',
-                  fontWeight: 'bold',
-                  fontSize: 15
-                }}>Hemen Keşfet →</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ marginLeft: 18, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 60, marginTop: 8 }}>🐶</Text>
-            </View>
+            </TouchableOpacity>
           </View>
           {/* --- More Uniform "Services" Horizontal Section --- */}
           <View
@@ -365,7 +412,7 @@ export default function HomeScreen() {
             {/* Header Row */}
             <View
               style={{
-                flexDirection: 'row',
+                flexDirection: isRTL ? "row-reverse" : "row",
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 paddingHorizontal: 22,
@@ -379,9 +426,10 @@ export default function HomeScreen() {
                   color: '#247059',
                   letterSpacing: -0.5,
                   fontFamily: 'System',
+                  ...ta,
                 }}
               >
-                Hizmetler
+                {t('homeHub.services')}
               </Text>
               <TouchableOpacity
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -392,6 +440,7 @@ export default function HomeScreen() {
                   paddingVertical: 6,
                 }}
                 activeOpacity={0.85}
+                onPress={() => router.push("/browse-services")}
               >
                 <Text
                   style={{
@@ -400,7 +449,7 @@ export default function HomeScreen() {
                     color: '#247059',
                   }}
                 >
-                  Tümü
+                  {t('homeHub.seeAll')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -409,8 +458,9 @@ export default function HomeScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{
-                paddingLeft: 22,
-                paddingRight: 8,
+                flexDirection: isRTL ? "row-reverse" : "row",
+                paddingLeft: isRTL ? 8 : 22,
+                paddingRight: isRTL ? 22 : 8,
                 gap: 16,
               }}
             >
@@ -437,7 +487,12 @@ export default function HomeScreen() {
                         : {}),
                       transform: [{ scale: idx === 0 ? 1.07 : 1.0 }],
                     }}
-                    onPress={() => router.push(item.route as any)}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/browse-services",
+                        params: { orgType: item.orgType },
+                      })
+                    }
                   >
                     <Text style={{ fontSize: 36, color: "#247059" }}>{item.icon}</Text>
                   </TouchableOpacity>
@@ -446,10 +501,12 @@ export default function HomeScreen() {
                       fontSize: 15,
                       fontWeight: idx === 0 ? '700' : '600',
                       color: "#247059",
-                      textAlign: 'center',
+                      textAlign: isRTL ? "right" : "center",
+                      writingDirection: isRTL ? "rtl" : "ltr",
                       lineHeight: 19,
                       paddingHorizontal: 2,
                       opacity: 1,
+                      alignSelf: "stretch",
                     }}
                     numberOfLines={2}
                     ellipsizeMode="tail"
@@ -460,48 +517,48 @@ export default function HomeScreen() {
               ))}
             </ScrollView>
           </View>
-          <Text style={[styles.sectionTitle, { color: "#1EA9CF" }]}>Recent cases near you</Text>
+          <Text style={[styles.sectionTitle, { color: "#1EA9CF" }, ta]}>{t('homeHub.recentCases')}</Text>
           <View style={[styles.caseCard, { backgroundColor: "#EAF8FB", borderColor: "#B0E7F3" }]}>
-            <View style={styles.caseTop}>
-              <Text style={[styles.urgentBadge, { backgroundColor: "#0A2239", color: "#fff" }]}>Urgent</Text>
+            <View style={[styles.caseTop, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+              <Text style={[styles.urgentBadge, { backgroundColor: "#0A2239", color: "#fff" }]}>{t('homeHub.urgent')}</Text>
               <Text style={[styles.distanceBadge, { backgroundColor: "#B0E7F3", color: "#0A2239" }]}>1.2 km</Text>
             </View>
             <View style={styles.pawArea}>
               <Text style={[styles.paw, { color: "#21E7D8" }]}>🐾</Text>
             </View>
             <View style={[styles.caseBody, { backgroundColor: "#F8FAFC" }]}>
-              <View style={styles.caseHeader}>
-                <Text style={[styles.caseTitle, { color: "#0A2239" }]}>Injured cat - Kizilay</Text>
-                <Text style={[styles.caseTime, { color: "#5AC9E3" }]}>5 min ago</Text>
+              <View style={[styles.caseHeader, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                <Text style={[styles.caseTitle, { color: "#0A2239" }, ta]}>{t('homeHub.case1Title')}</Text>
+                <Text style={[styles.caseTime, { color: "#5AC9E3" }, ta]}>{t('homeHub.case1Time')}</Text>
               </View>
-              <Text style={[styles.caseDesc, { color: "#1EA9CF" }]}>
-                Found near the park entrance, limping on front leg. Seems scared but calm.
+              <Text style={[styles.caseDesc, { color: "#1EA9CF" }, ta]}>
+                {t('homeHub.case1Desc')}
               </Text>
-              <View style={styles.caseButtons}>
+              <View style={[styles.caseButtons, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
                 <TouchableOpacity style={[styles.helpBtn, { backgroundColor: "#21E7D8" }]}>
-                  <Text style={[styles.helpBtnText, { color: "#0A2239" }]}>I can help</Text>
+                  <Text style={[styles.helpBtnText, { color: "#0A2239" }]}>{t('homeHub.helpBtn')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.detailsBtn, { backgroundColor: "#fff", borderColor: "#B0E7F3" }]}>
-                  <Text style={[styles.detailsBtnText, { color: "#1EA9CF" }]}>View details</Text>
+                  <Text style={[styles.detailsBtnText, { color: "#1EA9CF" }]}>{t('homeHub.detailsBtn')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
           <View style={[styles.caseCard, { backgroundColor: "#DEE8D6", borderColor: "#DEE8D6" }]}>
-            <View style={styles.caseTop}>
-              <Text style={[styles.resolvedBadge, { backgroundColor: "#21E7D8" }]}>Resolved</Text>
+            <View style={[styles.caseTop, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+              <Text style={[styles.resolvedBadge, { backgroundColor: "#21E7D8" }]}>{t('homeHub.resolved')}</Text>
               <Text style={[styles.distanceBadge, { backgroundColor: "#B0E7F3", color: "#0A2239" }]}>3.4 km</Text>
             </View>
             <View style={styles.pawArea}>
               <Text style={[styles.paw, { color: "#9EBB8B" }]}>🐾</Text>
             </View>
             <View style={styles.caseBody}>
-              <View style={styles.caseHeader}>
-                <Text style={styles.caseTitle}>Dog rescued - Cankaya</Text>
-                <Text style={styles.caseTime}>2 hrs ago</Text>
+              <View style={[styles.caseHeader, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                <Text style={[styles.caseTitle, ta]}>{t('homeHub.case2Title')}</Text>
+                <Text style={[styles.caseTime, ta]}>{t('homeHub.case2Time')}</Text>
               </View>
-              <Text style={styles.caseDesc}>
-                Taken to PetCare Clinic. Thanks to 3 volunteers who responded.
+              <Text style={[styles.caseDesc, ta]}>
+                {t('homeHub.case2Desc')}
               </Text>
             </View>
           </View>
@@ -526,9 +583,6 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
   },
   headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 8,
   },
   logoTitleRow: {
@@ -559,36 +613,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.5,
   },
-  logoText: {
-    fontSize: 19, // Smaller, more understated than logo
-    fontWeight: "600", // Softer weight for premium feel
-    color: "#1EA9CF",
-    marginLeft: -10,
-    marginTop: 20,
-    letterSpacing: 0.2,
-    fontFamily: "System",
-    opacity: 0.93, // Slightly muted for elegance
-    lineHeight: 22,
-    // Removes extra flourish; keep a clean one-line look
-  },
-  logoTextMain: {
-    fontWeight: "400",
-    color: "#1EA9CF", // Blue from the logo gradient
-    fontSize: 20,
-    letterSpacing: 0,
-    fontFamily: "System",
-  },
-  logoTextAccent: {
-    fontWeight: "600",
-    color: "#20D2C5", // Slightly softer teal for accent, less saturated than highlight
-    fontSize: 19,
-    letterSpacing: -0.5,
-    fontFamily: "System",
-  },
-  headerActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
   bellCircle: {
     width: 40,
     height: 40,
@@ -596,7 +620,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#EBFBFF", // light bluish-white, logo-inspired
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 8,
+    marginEnd: 8,
     position: "relative",
   },
   bellIcon: {
@@ -614,46 +638,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#21E7D8", // teal from logo
     borderWidth: 1.5,
     borderColor: "#EBFBFF",
-  },
-  profileCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: "#18243a", // matching dark logo shadow
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileIcon: {
-    fontSize: 23,
-    color: "#46f1e2", // lightened teal from the logo
-    fontWeight: "bold",
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 7,
-    marginBottom: 4,
-    marginLeft: 2,
-    gap: 3,
-  },
-  locationPin: {
-    fontSize: 16,
-    marginRight: 2,
-    marginTop: 2,
-  },
-  locationLabel: {
-    color: "#34364b", // blend between dark and blue from logo
-    fontWeight: "400",
-    fontSize: 15,
-  },
-  locationValue: {
-    color: "#1EA9CF", // main logo blue
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  locationDropdown: {
-    marginLeft: 2,
-    marginBottom: -1,
   },
   alertTitle: { color: "#fff", fontWeight: "700", fontSize: 18 },
   alertSubtitle: { color: "#8DE1E1", fontSize: 12, marginTop: 2, maxWidth: 220 }, // teal tint for emphasis

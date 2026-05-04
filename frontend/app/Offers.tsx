@@ -1,38 +1,24 @@
 import React from "react";
-import { View, Text, ScrollView, StyleSheet, Image } from "react-native";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNavBar from "./bottomNavBar";
-
-// Use emoji icons for animal types instead of local images
-const OFFERS = [
-  {
-    id: 1,
-    title: "İlk Ziyarette %20 İndirim!",
-    description: "Evcil dostunuzun ilk randevusunda klinik ve kuaförlerde %20 indirim fırsatı.",
-    icon: "🐶", // Dog icon
-    validUntil: "30 Haziran 2024",
-  },
-  {
-    id: 2,
-    title: "3 Al 2 Öde - Pet Kuaför Hizmetlerinde!",
-    description: "Şimdi 3 adet yıkama-paketli randevuya sadece 2'si fiyatına sahip olun.",
-    icon: "🐱", // Cat icon
-    validUntil: "15 Temmuz 2024",
-  },
-  {
-    id: 3,
-    title: "Pet Otel Rezervasyonlarında %10 İndirim",
-    description: "Yaz dönemi otel rezervasyonlarınızda %10 indirim cebinizde.",
-    icon: "🐦", // Bird icon for variety
-    validUntil: "31 Ağustos 2024",
-  },
-];
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function OffersPage() {
+  const { t } = useLanguage();
+  const OFFERS = React.useMemo(
+    () => [
+      { id: 1, title: t("offers.o1Title"), description: t("offers.o1Desc"), icon: "🐶", validUntil: t("offers.o1Valid") },
+      { id: 2, title: t("offers.o2Title"), description: t("offers.o2Desc"), icon: "🐱", validUntil: t("offers.o2Valid") },
+      { id: 3, title: t("offers.o3Title"), description: t("offers.o3Desc"), icon: "🐦", validUntil: t("offers.o3Valid") },
+    ],
+    [t]
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.pageTitle}>Kampanyalar & Teklifler</Text>
+        <Text style={styles.pageTitle}>{t("offers.pageTitle")}</Text>
         <ScrollView contentContainerStyle={styles.offersContainer} showsVerticalScrollIndicator={false}>
           {OFFERS.map((offer) => (
             <View key={offer.id} style={styles.offerCard}>
@@ -42,7 +28,7 @@ export default function OffersPage() {
               <View style={styles.offerInfo}>
                 <Text style={styles.offerTitle}>{offer.title}</Text>
                 <Text style={styles.offerDesc}>{offer.description}</Text>
-                <Text style={styles.offerValid}>Geçerlilik: {offer.validUntil}</Text>
+                <Text style={styles.offerValid}>{t("offers.validUntil")} {offer.validUntil}</Text>
               </View>
             </View>
           ))}

@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import BottomNavBar from './bottomNavBar';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ type MenuItemProps = {
 type SectionHeaderProps = {
   title: string;
   onEdit?: () => void;
+  editLabel?: string;
 };
 
 type PetCardProps = {
@@ -71,15 +73,15 @@ const MenuItem = ({ icon, title, color, subtitle }: MenuItemProps) => {
   );
 };
 
-const SectionHeader = ({ title, onEdit }: SectionHeaderProps) => {
+const SectionHeader = ({ title, onEdit, editLabel }: SectionHeaderProps) => {
   return (
     <View style={sectionStyles.sectionHeader}>
       <Text style={[sectionStyles.sectionTitle, { color: '#2b415c' }]}>{title}</Text>
-      {onEdit && (
+      {onEdit && editLabel ? (
         <TouchableOpacity onPress={onEdit}>
-          <Text style={[sectionStyles.editLink, { color: '#627ec6' }]}>Düzenle</Text>
+          <Text style={[sectionStyles.editLink, { color: '#627ec6' }]}>{editLabel}</Text>
         </TouchableOpacity>
-      )}
+      ) : null}
     </View>
   );
 };
@@ -104,6 +106,7 @@ const PetCard = ({ name, breed, icon, color }: PetCardProps) => {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
+  const { t } = useLanguage();
   return (
     <SafeAreaView style={[mainStyles.container, { backgroundColor: '#f4f7fe' }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={mainStyles.scroll}>
@@ -115,7 +118,7 @@ export default function ProfileScreen() {
           >
             <Ionicons name="chevron-back" size={20} color="#627ec6" />
           </TouchableOpacity>
-          <Text style={[mainStyles.headerTitle, { color: '#2b415c' }]}>Profilim</Text>
+          <Text style={[mainStyles.headerTitle, { color: '#2b415c' }]}>{t('profile.title')}</Text>
           <TouchableOpacity
             style={[mainStyles.settingsBtn, { backgroundColor: '#edf1fa', borderColor: '#4361ee' }]}
             onPress={() => router.push('/Settings')}
@@ -154,12 +157,12 @@ export default function ProfileScreen() {
             activeOpacity={0.85}
           >
             <Ionicons name="create-outline" size={15} color="#627ec6" style={{ marginRight: 5 }} />
-            <Text style={[mainStyles.editProfileText, { color: '#627ec6' }]}>Profili Düzenle</Text>
+            <Text style={[mainStyles.editProfileText, { color: '#627ec6' }]}>{t('profile.editProfile')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Account settings */}
-        <SectionHeader title="Hesap Ayarları" />
+        <SectionHeader title={t('profile.accountSection')} />
         <View style={[
           menuStyles.menuList,
           {
@@ -168,10 +171,10 @@ export default function ProfileScreen() {
             shadowColor: '#627ec6',
           }
         ]}>
-          <MenuItem icon="person-outline"   title="Kişisel Bilgiler"    subtitle="İsim, telefon, doğum tarihi" color="#f5f0fe" />
-          <MenuItem icon="card-outline"     title="Ödeme Yöntemleri"   subtitle="Kart ekle veya yönet"        color="#e9fbff" />
-          <MenuItem icon="location-outline" title="Adreslerim"         subtitle="Kayıtlı konumlar"            color="#fff6e9" />
-          <MenuItem icon="notifications-outline" title="Bildirimler"   subtitle="Push ve e-posta tercihleri"  color="#ecf7fb" />
+          <MenuItem icon="person-outline"   title={t('profile.menuPersonal')}    subtitle={t('profile.menuPersonalSub')} color="#f5f0fe" />
+          <MenuItem icon="card-outline"     title={t('profile.menuPayment')}   subtitle={t('profile.menuPaymentSub')}        color="#e9fbff" />
+          <MenuItem icon="location-outline" title={t('profile.menuAddress')}         subtitle={t('profile.menuAddressSub')}            color="#fff6e9" />
+          <MenuItem icon="notifications-outline" title={t('profile.menuNotifications')}   subtitle={t('profile.menuNotificationsSub')}  color="#ecf7fb" />
         </View>
 
         {/* Logout */}
@@ -181,9 +184,10 @@ export default function ProfileScreen() {
             { backgroundColor: '#f5f4f8', borderColor: '#e1e0e6' }
           ]}
           activeOpacity={0.85}
+          onPress={() => router.replace('/login')}
         >
           <Ionicons name="log-out-outline" size={18} color="#c5295b" style={{ marginRight: 8 }} />
-          <Text style={[mainStyles.logoutText, { color: '#2b415c' }]}>Çıkış Yap</Text>
+          <Text style={[mainStyles.logoutText, { color: '#2b415c' }]}>{t('profile.logout')}</Text>
         </TouchableOpacity>
 
         {/* Add extra space so the logout button can be scrolled above BottomNavBar */}
@@ -194,7 +198,7 @@ export default function ProfileScreen() {
   );
 }
 
-// ─── Styles (static colors, no ThemeContext) ─
+// ─── Styles (static colors) ─
 
 const mainStyles = StyleSheet.create({
   container: { flex: 1 },

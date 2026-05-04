@@ -1,176 +1,181 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions, Platform, ActivityIndicator, Alert, TextInput, Keyboard } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Dimensions,
+  Platform,
+  ActivityIndicator,
+  Alert,
+  TextInput,
+  Keyboard,
+} from "react-native";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import * as Location from 'expo-location';
+import * as Location from "expo-location";
+import { useLanguage } from "../contexts/LanguageContext";
+import { API_BASE_URL, parseResponseJson } from "../lib/api";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
-// Mock clinic store data with lat/lng, name, and optionally address
-const CLINIC_STORES = [
-  {
-    id: 1,
-    name: "VetCare Clinic - Kızılay",
-    latitude: 39.9225,
-    longitude: 32.8545,
-    address: "Atatürk Blv No:205, Ankara"
-  },
-  {
-    id: 2,
-    name: "Pet Health Clinic - Bahçelievler",
-    latitude: 39.9250,
-    longitude: 32.8501,
-    address: "Bahçelievler 3. Cadde, Ankara"
-  },
-  {
-    id: 3,
-    name: "Ankara Animal Hospital",
-    latitude: 39.9405,
-    longitude: 32.8635,
-    address: "Tunali Hilmi Cd. No:89, Ankara"
-  },
-  {
-    id: 4,
-    name: "College Vet Clinic",
-    latitude: 39.9325,
-    longitude: 32.8693,
-    address: "Kolej Sk. No:12, Ankara"
-  },
-  {
-    id: 5,
-    name: "GreenPaws Clinic",
-    latitude: 39.9204,
-    longitude: 32.8609,
-    address: "Güvenpark, Ankara"
-  },
-];
+type MapOrg = {
+  id: number;
+  display_name: string;
+  latitude: number;
+  longitude: number;
+  address_line?: string | null;
+  city?: string | null;
+  country?: string | null;
+  verified: boolean;
+  verification_status: string;
+};
 
-// Haversine distance utility
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   function toRad(x: number) {
-    return x * Math.PI / 180;
+    return (x * Math.PI) / 180;
   }
-  const R = 6371; // km
+  const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2)
-    ;
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
 export default function ClinicStoreMap() {
+  const { t } = useLanguage();
   const defaultLocation = { latitude: 39.9334, longitude: 32.8597 };
-  const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | null>(null);
-  const [nearestStore, setNearestStore] = useState<typeof CLINIC_STORES[0] | null>(null);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [orgs, setOrgs] = useState<MapOrg[]>([]);
+  const [loadOrgsError, setLoadOrgsError] = useState("");
+  const [nearest, setNearest] = useState<MapOrg | null>(null);
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<MapView | null>(null);
 
-  // --- Search Feature ---
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredStores, setFilteredStores] = useState(CLINIC_STORES);
-
-  // Filter stores based on search
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredStores(CLINIC_STORES);
-      return;
-    }
+  const [searchQuery, setSearchQuery] = useState("");
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return orgs;
     const lower = searchQuery.trim().toLowerCase();
-    setFilteredStores(CLINIC_STORES.filter(
-      s =>
-        s.name.toLowerCase().includes(lower) ||
-        (s.address && s.address.toLowerCase().includes(lower))
-    ));
-  }, [searchQuery]);
+    return orgs.filter((o) => {
+      const addr = [o.address_line, o.city, o.country].filter(Boolean).join(" ");
+      return (
+        o.display_name.toLowerCase().includes(lower) || addr.toLowerCase().includes(lower)
+      );
+    });
+  }, [orgs, searchQuery]);
 
-  // Find closest clinic store
+  const loadProviders = useCallback(async () => {
+    setLoadOrgsError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/organizations/map`);
+      const parsed = await parseResponseJson<{ organizations?: MapOrg[]; error?: string }>(res);
+      if (!parsed.ok || !parsed.data) {
+        throw new Error(parsed.bodySnippet || "Bad response");
+      }
+      const list = (parsed.data.organizations || []).filter(
+        (o) =>
+          o &&
+          Number.isFinite(Number(o.latitude)) &&
+          Number.isFinite(Number(o.longitude))
+      ) as MapOrg[];
+      setOrgs(list);
+    } catch {
+      setLoadOrgsError(t("map.loadProvidersError"));
+      setOrgs([]);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void loadProviders();
+  }, [loadProviders]);
+
   useEffect(() => {
     if (userLocation) {
       let minDist = Number.POSITIVE_INFINITY;
-      let nearest = null;
-      for (const s of filteredStores) {
-        const dist = getDistance(userLocation.latitude, userLocation.longitude, s.latitude, s.longitude);
+      let best: MapOrg | null = null;
+      for (const o of filtered) {
+        const dist = getDistance(userLocation.latitude, userLocation.longitude, o.latitude, o.longitude);
         if (dist < minDist) {
           minDist = dist;
-          nearest = s;
+          best = o;
         }
       }
-      setNearestStore(nearest);
+      setNearest(best);
     }
-  }, [userLocation, filteredStores]);
+  }, [userLocation, filtered]);
 
-  // On mount: get user location
   useEffect(() => {
     let isMounted = true;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert("Location required", "Please enable location to find nearby clinic stores.");
-          setUserLocation(defaultLocation);
+        if (status !== "granted") {
+          Alert.alert(t("map.locAlertTitle"), t("map.locAlertBody"));
+          if (isMounted) setUserLocation(defaultLocation);
         } else {
           const loc = await Location.getCurrentPositionAsync({});
           if (isMounted && loc?.coords?.latitude && loc?.coords?.longitude) {
             setUserLocation({
               latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude
+              longitude: loc.coords.longitude,
             });
             if (mapRef.current) {
-              mapRef.current.animateToRegion({
-                latitude: loc.coords.latitude,
-                longitude: loc.coords.longitude,
-                latitudeDelta: 0.018,
-                longitudeDelta: 0.018
-              }, 1000);
+              mapRef.current.animateToRegion(
+                {
+                  latitude: loc.coords.latitude,
+                  longitude: loc.coords.longitude,
+                  latitudeDelta: 0.08,
+                  longitudeDelta: 0.08,
+                },
+                800
+              );
             }
           }
         }
-      } catch (e) {
-        setUserLocation(defaultLocation);
+      } catch {
+        if (isMounted) setUserLocation(defaultLocation);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     })();
-    return () => { isMounted = false; };
-  }, []);
+    return () => {
+      isMounted = false;
+    };
+  }, [t]);
 
   if (loading || !userLocation) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }]}>
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }]}>
         <ActivityIndicator size="large" color="#2B9B7A" />
-        <Text style={{ marginTop: 14, color: "#2B9B7A", fontSize: 16 }}>Finding your location...</Text>
+        <Text style={{ marginTop: 14, color: "#2B9B7A", fontSize: 16 }}>{t("map.findingLocation")}</Text>
       </View>
     );
   }
 
-  // Map markers: user and search-filtered clinic stores
   return (
     <View style={styles.container}>
-      {/* Search bar */}
       <View style={styles.searchRow}>
         <Ionicons name="search" size={21} color="#88C6B1" style={{ marginRight: 6 }} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search clinic name or address"
+          placeholder={t("map.searchProvidersPlaceholder")}
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor="#A3BFC9"
           returnKeyType="search"
           onSubmitEditing={Keyboard.dismiss}
         />
-        {searchQuery.length > 0 &&
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
+        {searchQuery.length > 0 ? (
+          <TouchableOpacity onPress={() => setSearchQuery("")}>
             <Ionicons name="close-circle" size={18} color="#B7D5BC" style={{ marginLeft: 9 }} />
           </TouchableOpacity>
-        }
+        ) : null}
       </View>
-  
- 
+
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -178,83 +183,93 @@ export default function ClinicStoreMap() {
         region={{
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
-          latitudeDelta: 0.028,
-          longitudeDelta: 0.028
+          latitudeDelta: 0.08,
+          longitudeDelta: 0.08,
         }}
-        showsUserLocation={true}
-        showsMyLocationButton={true}
+        showsUserLocation
+        showsMyLocationButton
       >
-        {/* User Marker */}
-        <Marker
-          coordinate={userLocation}
-          title="You are here"
-          pinColor="#2B9B7A"
-          tracksViewChanges={false}
-        >
+        <Marker coordinate={userLocation} title={t("map.markerYou")} tracksViewChanges={false}>
           <View style={styles.userMarkerCore}>
             <Ionicons name="person" size={18} color="#fff" />
           </View>
         </Marker>
-        {/* Clinic Store Markers */}
-        {filteredStores.map((store) => (
-          <Marker
-            key={store.id}
-            coordinate={{ latitude: store.latitude, longitude: store.longitude }}
-            title={store.name}
-            description={store.address}
-            pinColor={
-              nearestStore && store.id === nearestStore.id ? "#F8004B" : "#317AF5"
-            }
-            tracksViewChanges={false}
-          >
-            <View style={[
-              styles.storeMarkerCore,
-              nearestStore && store.id === nearestStore.id ? styles.nearestHighlight : null
-            ]}>
-              <Ionicons name="medkit" size={16} color="#fff" />
-            </View>
-          </Marker>
-        ))}
+        {filtered.map((o) => {
+          const isNear = nearest && o.id === nearest.id;
+          const verified = Boolean(o.verified);
+          return (
+            <Marker
+              key={o.id}
+              coordinate={{ latitude: o.latitude, longitude: o.longitude }}
+              title={o.display_name}
+              description={verified ? t("map.verifiedPin") : t("map.unverifiedPin")}
+              tracksViewChanges={false}
+            >
+              <View
+                style={[
+                  styles.pin,
+                  verified ? styles.pinVerified : styles.pinPending,
+                  isNear ? styles.pinNearest : null,
+                ]}
+              >
+                <Ionicons name="medkit" size={15} color="#fff" />
+              </View>
+            </Marker>
+          );
+        })}
       </MapView>
 
-      {/* Floating Back Button */}
-      <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30 }}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-back" size={28} color="#3B6811" />
-        </TouchableOpacity>
-      </View>
- 
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.75}>
+        <Ionicons name="chevron-back" size={28} color="#3B6811" />
+      </TouchableOpacity>
 
-      {/* Info Card for nearest clinic store */}
+      <View style={styles.legend}>
+        <View style={styles.legendRow}>
+          <View style={[styles.legendDot, styles.pinVerified]} />
+          <Text style={styles.legendText}>{t("map.legendVerified")}</Text>
+        </View>
+        <View style={styles.legendRow}>
+          <View style={[styles.legendDot, styles.pinPending]} />
+          <Text style={styles.legendText}>{t("map.legendPending")}</Text>
+        </View>
+      </View>
+
       <View style={styles.overlay}>
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Nearest Clinic</Text>
-          {nearestStore ? (
+          <Text style={styles.infoTitle}>{t("map.nearestProviderTitle")}</Text>
+          {loadOrgsError ? <Text style={styles.warn}>{loadOrgsError}</Text> : null}
+          {nearest ? (
             <>
-              <Text style={styles.storeName}>{nearestStore.name}</Text>
-              <Text style={styles.addressTxt}>{nearestStore.address}</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.storeName}>{nearest.display_name}</Text>
+                <View style={[styles.badge, nearest.verified ? styles.badgeOk : styles.badgeWait]}>
+                  <Text style={styles.badgeTxt}>
+                    {nearest.verified ? t("map.verifiedBadge") : t("map.pendingBadge")}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.addressTxt}>
+                {[nearest.address_line, nearest.city].filter(Boolean).join(" · ") || "—"}
+              </Text>
               <TouchableOpacity
                 style={styles.confirmBtn}
                 onPress={() => {
-                  if (mapRef.current) {
-                    mapRef.current.animateToRegion({
-                      latitude: nearestStore.latitude,
-                      longitude: nearestStore.longitude,
-                      latitudeDelta: 0.012,
-                      longitudeDelta: 0.012
-                    }, 900);
-                  }
+                  mapRef.current?.animateToRegion(
+                    {
+                      latitude: nearest.latitude,
+                      longitude: nearest.longitude,
+                      latitudeDelta: 0.02,
+                      longitudeDelta: 0.02,
+                    },
+                    700
+                  );
                 }}
               >
-                <Text style={styles.confirmBtnText}>Show on Map</Text>
+                <Text style={styles.confirmBtnText}>{t("map.showOnMap")}</Text>
               </TouchableOpacity>
             </>
           ) : (
-            <Text style={{ color: "#666", marginVertical: 5 }}>No clinics found nearby.</Text>
+            <Text style={styles.muted}>{orgs.length === 0 ? t("map.noProviders") : t("map.noClinics")}</Text>
           )}
         </View>
       </View>
@@ -265,121 +280,132 @@ export default function ClinicStoreMap() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f3fcf8',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f3fcf8",
     borderRadius: 15,
     borderWidth: 1.6,
-    borderColor: '#b2edd7',
+    borderColor: "#b2edd7",
     paddingHorizontal: 13,
-    paddingVertical: Platform.OS === 'ios' ? 13 : 10,
+    paddingVertical: Platform.OS === "ios" ? 13 : 10,
     marginHorizontal: 14,
-    marginTop: Platform.OS === 'ios' ? 58 : 34,
+    marginTop: Platform.OS === "ios" ? 58 : 34,
     marginBottom: 2,
     zIndex: 20,
-    shadowColor: "#3ceadf",
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
     elevation: 2,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16.5,
+    fontSize: 16,
     paddingVertical: 3,
-    color: "#104B2E"
+    color: "#104B2E",
   },
-  
   map: {
-    width: width,
-    height: height,
-    marginTop: 0, // Make room for search bar
+    width,
+    height,
   },
   backButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 140 : 76, // Move it below the search bar
-    left: 10,
-    backgroundColor: '#fff',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
+    position: "absolute",
+    top: Platform.OS === "ios" ? 128 : 72,
+    left: 14,
+    backgroundColor: "#fff",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
     elevation: 10,
-    zIndex: 10, // default zIndex
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    zIndex: 12,
   },
+  legend: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 186 : 128,
+    right: 12,
+    backgroundColor: "rgba(255,255,255,0.94)",
+    borderRadius: 12,
+    padding: 10,
+    gap: 8,
+    zIndex: 11,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: "#e2f4ec",
+  },
+  legendRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  legendDot: { width: 12, height: 12, borderRadius: 6 },
+  legendText: { fontSize: 11, fontWeight: "600", color: "#1e3d2f" },
   overlay: {
-    position: 'absolute',
-    bottom: 40,
-    left: 20,
-    right: 20,
+    position: "absolute",
+    bottom: 32,
+    left: 16,
+    right: 16,
   },
   infoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 20,
-    padding: 22,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
+    padding: 18,
     elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    borderWidth: 1,
+    borderColor: "#eef6f2",
   },
   infoTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#3B6811',
-    marginBottom: 6,
-  },
-  storeName: {
-    fontWeight: '700',
-    fontSize: 15,
-    color: "#1A285A",
-    marginBottom: 2,
-  },
-  addressTxt: {
-    fontSize: 13.1,
-    color: "#7B7C81",
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#3B6811",
     marginBottom: 8,
   },
+  warn: { color: "#b45309", fontSize: 12, marginBottom: 8 },
+  nameRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 4 },
+  storeName: { fontWeight: "800", fontSize: 16, color: "#0f172a", flexShrink: 1 },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  badgeOk: { backgroundColor: "#dcfce7" },
+  badgeWait: { backgroundColor: "#ffedd5" },
+  badgeTxt: { fontSize: 11, fontWeight: "700", color: "#14532d" },
+  addressTxt: {
+    fontSize: 13,
+    color: "#64748b",
+    marginBottom: 10,
+  },
+  muted: { color: "#64748b", marginVertical: 6 },
   confirmBtn: {
-    backgroundColor: '#2B9B7A',
+    backgroundColor: "#2B9B7A",
     borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: 'center',
-    marginTop: 7,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 4,
   },
-  confirmBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
+  confirmBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   userMarkerCore: {
     width: 32,
     height: 32,
-    backgroundColor: '#2B9B7A',
+    backgroundColor: "#2B9B7A",
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2
+    borderColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  storeMarkerCore: {
-    width: 30,
-    height: 30,
-    backgroundColor: '#317AF5',
-    borderRadius: 15,
-    borderWidth: 2.2,
-    borderColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2
+  pin: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  nearestHighlight: {
-    backgroundColor: '#F8004B',
-    borderColor: "#FDE7EF"
+  pinVerified: { backgroundColor: "#15803d" },
+  pinPending: { backgroundColor: "#ea580c" },
+  pinNearest: {
+    transform: [{ scale: 1.15 }],
+    borderWidth: 3,
+    borderColor: "#fef08a",
   },
 });

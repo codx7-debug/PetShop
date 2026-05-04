@@ -9,6 +9,8 @@ import {
   Modal,
 } from 'react-native';
 import BottomNavBar from './bottomNavBar';
+import { useLanguage } from '../contexts/LanguageContext';
+import { router } from 'expo-router';
 
 interface Groomer {
   id: string;
@@ -116,6 +118,7 @@ const GROOMERS: Groomer[] = [
 ];
 
 const PetKuaferPage: React.FC = () => {
+  const { t } = useLanguage();
   const [selectedGroomer, setSelectedGroomer] = useState<Groomer | null>(null);
 
   return (
@@ -146,7 +149,7 @@ const PetKuaferPage: React.FC = () => {
             }}
             numberOfLines={1}
           >
-            Kuaför ara...
+            {t('listingGroomer.searchPlaceholder')}
           </Text>
           {/* This is a static "search bar" UI; replace <Text> above with <TextInput> to make it functional */}
         </View>
@@ -176,7 +179,18 @@ const PetKuaferPage: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.pageTitle}>Pet Kuaförler</Text>
+        <TouchableOpacity
+          style={styles.liveProvidersBanner}
+          activeOpacity={0.9}
+          onPress={() =>
+            router.push({ pathname: '/browse-services', params: { orgType: 'salon' } })
+          }
+        >
+          <Text style={styles.liveProvidersTitle}>{t('listingGroomer.browseRealProviders')}</Text>
+          <Text style={styles.liveProvidersSub}>{t('listingGroomer.browseRealProvidersSub')}</Text>
+          <Text style={styles.liveProvidersCta}>{t('listingGroomer.partnerCta')} →</Text>
+        </TouchableOpacity>
+        <Text style={styles.pageTitle}>{t('listingGroomer.pageTitle')}</Text>
         <View style={styles.listContainer}>
           {GROOMERS.map(groomer => (
             <TouchableOpacity
@@ -189,7 +203,7 @@ const PetKuaferPage: React.FC = () => {
               <View style={styles.infoCol}>
                 <Text style={styles.groomerNameSmall}>{groomer.name}</Text>
                 <Text style={styles.groomerLocSmall} numberOfLines={1}>📍 {groomer.location}</Text>
-                <Text style={styles.groomerPriceSmall}>₺{groomer.price} / seans</Text>
+                <Text style={styles.groomerPriceSmall}>₺{groomer.price}{t('listingGroomer.perSession')}</Text>
                 <View style={styles.ratingRow}>
                   <Text style={styles.ratingStar}>⭐</Text>
                   <Text style={styles.ratingValue}>{groomer.rating}</Text>
@@ -224,9 +238,9 @@ const PetKuaferPage: React.FC = () => {
                     <Text style={styles.ratingValue}>{selectedGroomer.rating}</Text>
                   </View>
                   <View style={styles.divider} />
-                  <Text style={styles.sectionTitle}>Hakkında</Text>
+                  <Text style={styles.sectionTitle}>{t('listingGroomer.about')}</Text>
                   <Text style={styles.description}>{selectedGroomer.description}</Text>
-                  <Text style={styles.sectionTitle}>Hizmetler</Text>
+                  <Text style={styles.sectionTitle}>{t('listingGroomer.services')}</Text>
                   <View style={styles.servicesContainer}>
                     {selectedGroomer.services.map((s, idx) => (
                       <View key={idx} style={styles.serviceBadge}>
@@ -237,20 +251,24 @@ const PetKuaferPage: React.FC = () => {
                   <View style={styles.bookingCard}>
                     <View style={styles.priceRow}>
                       <Text style={styles.price}>₺{selectedGroomer.price}</Text>
-                      <Text style={styles.perSession}>/ seans</Text>
+                      <Text style={styles.perSession}>{t('listingGroomer.perSession')}</Text>
                     </View>
-                    <TouchableOpacity style={styles.reserveButton}>
-                      <Text style={styles.reserveButtonText}>Randevu Al</Text>
+                    <TouchableOpacity
+                      style={styles.reserveButton}
+                      onPress={() => {
+                        setSelectedGroomer(null);
+                        router.push({ pathname: '/browse-services', params: { orgType: 'salon' } });
+                      }}
+                    >
+                      <Text style={styles.reserveButtonText}>{t('listingGroomer.reserve')}</Text>
                     </TouchableOpacity>
-                    <Text style={styles.cancelNote}>
-                      Birçok hizmette ücretsiz iptal imkanı vardır.
-                    </Text>
+                    <Text style={styles.cancelNote}>{t('listingGroomer.cancelNote')}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.closeModalBtn}
                     onPress={() => setSelectedGroomer(null)}
                   >
-                    <Text style={styles.closeModalText}>Kapat</Text>
+                    <Text style={styles.closeModalText}>{t('listingGroomer.close')}</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
@@ -272,6 +290,32 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 32,
     paddingHorizontal: 0,
+  },
+  liveProvidersBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#faf5ff',
+    borderWidth: 1,
+    borderColor: '#e9d5ff',
+  },
+  liveProvidersTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#581c87',
+  },
+  liveProvidersSub: {
+    fontSize: 13,
+    color: '#6b21a8',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  liveProvidersCta: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#7c3aed',
+    marginTop: 10,
   },
   pageTitle: {
     fontSize: 25,

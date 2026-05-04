@@ -9,6 +9,8 @@ import {
   Modal,
 } from 'react-native';
 import BottomNavBar from './bottomNavBar';
+import { useLanguage } from '../contexts/LanguageContext';
+import { router } from 'expo-router';
 
 interface Hotel {
   id: string;
@@ -114,6 +116,7 @@ const HOTELS: Hotel[] = [
 ];
 
 const HotelPage: React.FC = () => {
+  const { t } = useLanguage();
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
 
   return (
@@ -144,7 +147,7 @@ const HotelPage: React.FC = () => {
             }}
             numberOfLines={1}
           >
-            Otel ara...
+            {t('listingHotel.searchPlaceholder')}
           </Text>
           {/* This is a static "search bar" UI; replace <Text> above with <TextInput> to make it functional */}
         </View>
@@ -174,7 +177,18 @@ const HotelPage: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.pageTitle}>Pet Hotels</Text>
+        <TouchableOpacity
+          style={styles.liveProvidersBanner}
+          activeOpacity={0.9}
+          onPress={() =>
+            router.push({ pathname: '/browse-services', params: { orgType: 'hotel' } })
+          }
+        >
+          <Text style={styles.liveProvidersTitle}>{t('listingHotel.browseRealProviders')}</Text>
+          <Text style={styles.liveProvidersSub}>{t('listingHotel.browseRealProvidersSub')}</Text>
+          <Text style={styles.liveProvidersCta}>{t('listingHotel.partnerCta')} →</Text>
+        </TouchableOpacity>
+        <Text style={styles.pageTitle}>{t('listingHotel.pageTitle')}</Text>
         <View style={styles.listContainer}>
           {HOTELS.map(hotel => (
             <TouchableOpacity
@@ -187,7 +201,7 @@ const HotelPage: React.FC = () => {
               <View style={styles.infoCol}>
                 <Text style={styles.hotelNameSmall}>{hotel.name}</Text>
                 <Text style={styles.hotelLocSmall} numberOfLines={1}>📍 {hotel.location}</Text>
-                <Text style={styles.hotelPriceSmall}>₺{hotel.pricePerNight} / gece</Text>
+                <Text style={styles.hotelPriceSmall}>₺{hotel.pricePerNight}{t('listingHotel.perNight')}</Text>
                 <View style={styles.ratingRow}>
                   <Text style={styles.ratingStar}>⭐</Text>
                   <Text style={styles.ratingValue}>{hotel.rating}</Text>
@@ -222,9 +236,9 @@ const HotelPage: React.FC = () => {
                     <Text style={styles.ratingValue}>{selectedHotel.rating}</Text>
                   </View>
                   <View style={styles.divider} />
-                  <Text style={styles.sectionTitle}>Hakkında</Text>
+                  <Text style={styles.sectionTitle}>{t('listingHotel.about')}</Text>
                   <Text style={styles.description}>{selectedHotel.description}</Text>
-                  <Text style={styles.sectionTitle}>Özellikler</Text>
+                  <Text style={styles.sectionTitle}>{t('listingHotel.features')}</Text>
                   <View style={styles.amenitiesContainer}>
                     {selectedHotel.amenities.map((a, idx) => (
                       <View key={idx} style={styles.amenityBadge}>
@@ -235,20 +249,24 @@ const HotelPage: React.FC = () => {
                   <View style={styles.bookingCard}>
                     <View style={styles.priceRow}>
                       <Text style={styles.price}>₺{selectedHotel.pricePerNight}</Text>
-                      <Text style={styles.perNight}>/ gece</Text>
+                      <Text style={styles.perNight}>{t('listingHotel.perNight')}</Text>
                     </View>
-                    <TouchableOpacity style={styles.reserveButton}>
-                      <Text style={styles.reserveButtonText}>Rezervasyon Yap</Text>
+                    <TouchableOpacity
+                      style={styles.reserveButton}
+                      onPress={() => {
+                        setSelectedHotel(null);
+                        router.push({ pathname: '/browse-services', params: { orgType: 'hotel' } });
+                      }}
+                    >
+                      <Text style={styles.reserveButtonText}>{t('listingHotel.reserve')}</Text>
                     </TouchableOpacity>
-                    <Text style={styles.cancelNote}>
-                      Çoğu konaklama için ücretsiz iptal mümkündür.
-                    </Text>
+                    <Text style={styles.cancelNote}>{t('listingHotel.cancelNote')}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.closeModalBtn}
                     onPress={() => setSelectedHotel(null)}
                   >
-                    <Text style={styles.closeModalText}>Kapat</Text>
+                    <Text style={styles.closeModalText}>{t('listingHotel.close')}</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
@@ -270,6 +288,32 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 32,
     paddingHorizontal: 0,
+  },
+  liveProvidersBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  liveProvidersTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#9a3412',
+  },
+  liveProvidersSub: {
+    fontSize: 13,
+    color: '#c2410c',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  liveProvidersCta: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ea580c',
+    marginTop: 10,
   },
   pageTitle: {
     fontSize: 25,

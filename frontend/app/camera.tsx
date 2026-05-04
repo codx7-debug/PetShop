@@ -1,16 +1,19 @@
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRef } from 'react';
 import { Button, View, Text, StyleSheet } from 'react-native';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function App() {
+  const { t } = useLanguage();
   const [permission, requestPermission] = useCameraPermissions();
-const cameraRef = useRef<CameraView>(null);
+  const cameraRef = useRef<CameraView>(null);
 
 
   const takePicture = async () => {
     if (cameraRef.current) {
       const photo = await cameraRef.current.takePictureAsync();
       console.log(photo.uri);
+      
     }
   };
 
@@ -19,8 +22,8 @@ const cameraRef = useRef<CameraView>(null);
   if (!permission.granted) {
     return (
       <View style={styles.container}>
-        <Text style={styles.message}>Camera permission is required.</Text>
-        <Button title="Grant Permission" onPress={requestPermission} />
+        <Text style={styles.message}>{t('camera.permMessage')}</Text>
+        <Button title={t('camera.grantPerm')} onPress={requestPermission} />
       </View>
     );
   }
@@ -28,7 +31,7 @@ const cameraRef = useRef<CameraView>(null);
   return (
     <CameraView style={styles.camera} ref={cameraRef} facing="back">
       <View style={styles.buttonContainer}>
-        <Button title="Take Picture" onPress={takePicture}  />
+        <Button title={t('camera.takePicture')} onPress={takePicture} />
       </View>
     </CameraView>
   );
