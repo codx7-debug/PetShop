@@ -11,6 +11,8 @@ type MeUser = {
   notify_email?: boolean;
   notify_push?: boolean;
   notify_marketing?: boolean;
+  notify_booking_reminder?: boolean;
+  notify_org_broadcast?: boolean;
 };
 
 export default function ProfileNotificationsScreen() {
@@ -19,6 +21,8 @@ export default function ProfileNotificationsScreen() {
   const [emailOn, setEmailOn] = useState(true);
   const [pushOn, setPushOn] = useState(true);
   const [mktOn, setMktOn] = useState(false);
+  const [bookingOn, setBookingOn] = useState(true);
+  const [broadcastOn, setBroadcastOn] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -31,6 +35,8 @@ export default function ProfileNotificationsScreen() {
       setEmailOn(u.notify_email !== false);
       setPushOn(u.notify_push !== false);
       setMktOn(Boolean(u.notify_marketing));
+      setBookingOn(u.notify_booking_reminder !== false);
+      setBroadcastOn(u.notify_org_broadcast !== false);
     } catch {
       Alert.alert("", t("userProfile.loadFail"));
       router.back();
@@ -43,7 +49,13 @@ export default function ProfileNotificationsScreen() {
     void load();
   }, [load]);
 
-  const persistAll = async (body: { notify_email: boolean; notify_push: boolean; notify_marketing: boolean }) => {
+  const persistAll = async (body: {
+    notify_email: boolean;
+    notify_push: boolean;
+    notify_marketing: boolean;
+    notify_booking_reminder: boolean;
+    notify_org_broadcast: boolean;
+  }) => {
     setSaving(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/me`, {
@@ -59,6 +71,8 @@ export default function ProfileNotificationsScreen() {
       setEmailOn(Boolean(parsed.data.user.notify_email));
       setPushOn(Boolean(parsed.data.user.notify_push));
       setMktOn(Boolean(parsed.data.user.notify_marketing));
+      setBookingOn(parsed.data.user.notify_booking_reminder !== false);
+      setBroadcastOn(parsed.data.user.notify_org_broadcast !== false);
     } catch {
       Alert.alert("", t("userProfile.saveFail"));
     } finally {
@@ -92,21 +106,75 @@ export default function ProfileNotificationsScreen() {
           <Text style={styles.rowTxt}>{t("userProfile.notifEmail")}</Text>
           <Switch
             value={emailOn}
-            onValueChange={(v) => void persistAll({ notify_email: v, notify_push: pushOn, notify_marketing: mktOn })}
+            onValueChange={(v) =>
+              void persistAll({
+                notify_email: v,
+                notify_push: pushOn,
+                notify_marketing: mktOn,
+                notify_booking_reminder: bookingOn,
+                notify_org_broadcast: broadcastOn,
+              })
+            }
           />
         </View>
         <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <Text style={styles.rowTxt}>{t("userProfile.notifPush")}</Text>
           <Switch
             value={pushOn}
-            onValueChange={(v) => void persistAll({ notify_email: emailOn, notify_push: v, notify_marketing: mktOn })}
+            onValueChange={(v) =>
+              void persistAll({
+                notify_email: emailOn,
+                notify_push: v,
+                notify_marketing: mktOn,
+                notify_booking_reminder: bookingOn,
+                notify_org_broadcast: broadcastOn,
+              })
+            }
+          />
+        </View>
+        <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          <Text style={styles.rowTxt}>Booking SMS / WhatsApp reminders</Text>
+          <Switch
+            value={bookingOn}
+            onValueChange={(v) =>
+              void persistAll({
+                notify_email: emailOn,
+                notify_push: pushOn,
+                notify_marketing: mktOn,
+                notify_booking_reminder: v,
+                notify_org_broadcast: broadcastOn,
+              })
+            }
+          />
+        </View>
+        <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          <Text style={styles.rowTxt}>Messages from salons you follow</Text>
+          <Switch
+            value={broadcastOn}
+            onValueChange={(v) =>
+              void persistAll({
+                notify_email: emailOn,
+                notify_push: pushOn,
+                notify_marketing: mktOn,
+                notify_booking_reminder: bookingOn,
+                notify_org_broadcast: v,
+              })
+            }
           />
         </View>
         <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <Text style={styles.rowTxt}>{t("userProfile.notifMkt")}</Text>
           <Switch
             value={mktOn}
-            onValueChange={(v) => void persistAll({ notify_email: emailOn, notify_push: pushOn, notify_marketing: v })}
+            onValueChange={(v) =>
+              void persistAll({
+                notify_email: emailOn,
+                notify_push: pushOn,
+                notify_marketing: v,
+                notify_booking_reminder: bookingOn,
+                notify_org_broadcast: broadcastOn,
+              })
+            }
           />
         </View>
       </ScrollView>

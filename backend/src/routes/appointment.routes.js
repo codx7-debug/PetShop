@@ -6,6 +6,7 @@ const router = Router();
 const writeGuard = appointmentWriteMiddleware;
 
 router.get("/appointments", ctrl.listAppointments);
+router.post("/appointments/waitlist", writeGuard, ctrl.enqueueWaitlist);
 router.post("/appointments", writeGuard, ctrl.createAppointment);
 router.patch("/appointments/:id", writeGuard, ctrl.patchAppointment);
 router.post("/appointments/:id/cancel", writeGuard, ctrl.cancelAppointment);

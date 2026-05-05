@@ -1,9 +1,20 @@
-import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useCallback, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import BottomNavBar from "./bottomNavBar";
 import { useLanguage } from "../contexts/LanguageContext";
+import { API_BASE_URL, getAuthHeaders, parseResponseJson } from "../lib/api";
+
+type InboxRow = {
+  id: number;
+  title: string;
+  body?: string | null;
+  kind?: string;
+  read_at?: string | null;
+  created_at?: string;
+};
 
 export default function NotificationsScreen() {
   const { t, isRTL } = useLanguage();
@@ -12,14 +23,48 @@ export default function NotificationsScreen() {
     textAlign: (isRTL ? "right" : "left") as "left" | "right",
   };
 
-  const items = React.useMemo(
-    () => [
-      { id: "1", title: t("notifications.n1Title"), body: t("notifications.n1Body"), time: t("notifications.n1Time") },
-      { id: "2", title: t("notifications.n2Title"), body: t("notifications.n2Body"), time: t("notifications.n2Time") },
-      { id: "3", title: t("notifications.n3Title"), body: t("notifications.n3Body"), time: t("notifications.n3Time") },
-    ],
-    [t]
+  const [rows, setRows] = useState<InboxRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(
+    async (fromPull?: boolean) => {
+      if (fromPull) setRefreshing(true);
+      else setLoading(true);
+      try {
+        const tok = await AsyncStorage.getItem("token");
+        if (!tok) {
+          setRows([]);
+          return;
+        }
+        const res = await fetch(`${API_BASE_URL}/api/me/notifications`, { headers: await getAuthHeaders(false) });
+        const parsed = await parseResponseJson<{ notifications?: InboxRow[] }>(res);
+        setRows(parsed.ok && parsed.data?.notifications ? parsed.data.notifications : []);
+      } catch {
+        setRows([]);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    []
   );
+
+  React.useEffect(() => {
+    void load(false);
+  }, [load]);
+
+  const markRead = async (id: number) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/me/notifications/${id}/read`, {
+        method: "PATCH",
+        headers: await getAuthHeaders(false),
+      });
+      if (res.ok) await load(true);
+    } catch {
+      /* */
+    }
+  };
 
   const backBtnBg = "#e0f2f1";
   const backBtnColor = "#279b8f";
@@ -65,15 +110,39 @@ export default function NotificationsScreen() {
 
       <Text style={[styles.pageTitle, ta]}>{t("notifications.title")}</Text>
 
-      <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {items.map((row) => (
-          <View key={row.id} style={styles.card}>
-            <Text style={[styles.cardTitle, ta]}>{row.title}</Text>
-            <Text style={[styles.cardBody, ta]}>{row.body}</Text>
-            <Text style={[styles.cardTime, ta]}>{row.time}</Text>
-          </View>
-        ))}
-      </ScrollView>
+      {loading ? (
+        <View style={{ padding: 24 }}>
+          <ActivityIndicator color="#036672" />
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor="#036672" />
+          }
+        >
+          {rows.length === 0 ? (
+            <Text style={[styles.empty, ta]}>No messages yet. Booking reminders and salon updates appear here.</Text>
+          ) : (
+            rows.map((row) => (
+              <TouchableOpacity
+                key={row.id}
+                style={[styles.card, !row.read_at && styles.cardUnread]}
+                activeOpacity={0.9}
+                onPress={() => void markRead(row.id)}
+              >
+                <Text style={[styles.cardTitle, ta]}>{row.title}</Text>
+                {row.body ? <Text style={[styles.cardBody, ta]}>{row.body}</Text> : null}
+                <Text style={[styles.cardTime, ta]}>
+                  {row.created_at ? new Date(row.created_at).toLocaleString() : ""}
+                  {row.kind ? ` · ${row.kind}` : ""}
+                </Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      )}
 
       <BottomNavBar />
     </SafeAreaView>
@@ -91,6 +160,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   list: { paddingHorizontal: 16, paddingBottom: 120, gap: 12 },
+  empty: { color: "#64748b", paddingHorizontal: 8, lineHeight: 22, fontSize: 15 },
   card: {
     backgroundColor: "#fff",
     borderRadius: 14,
@@ -103,6 +173,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+  cardUnread: { borderColor: "#80cbc4", backgroundColor: "#f0fdfa" },
   cardTitle: { fontSize: 16, fontWeight: "800", color: "#00695c", marginBottom: 6 },
   cardBody: { fontSize: 14, color: "#374151", lineHeight: 20, marginBottom: 8 },
   cardTime: { fontSize: 12, fontWeight: "600", color: "#4dd0e1" },

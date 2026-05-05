@@ -86,7 +86,8 @@ export async function getServiceById(serviceId) {
 /** Active service with organization owner user id (for booking / staff assignment). */
 export async function getActiveServiceWithOrgOwner(serviceId) {
   const { rows } = await pool.query(
-    `SELECT s.id, s.organization_id, s.title, s.is_active, o.owner_user_id AS provider_user_id
+    `SELECT s.id, s.organization_id, s.title, s.is_active,
+            o.owner_user_id AS provider_user_id
      FROM services s
      INNER JOIN organizations o ON o.id = s.organization_id
      WHERE s.id = $1`,

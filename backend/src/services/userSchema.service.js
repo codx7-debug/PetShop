@@ -42,6 +42,12 @@ export async function initUserSchema() {
   await pool.query(
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_marketing BOOLEAN NOT NULL DEFAULT false`
   );
+  await pool.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_booking_reminder BOOLEAN NOT NULL DEFAULT true`
+  );
+  await pool.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_org_broadcast BOOLEAN NOT NULL DEFAULT true`
+  );
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_payment_cards (

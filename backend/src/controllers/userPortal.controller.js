@@ -2,7 +2,10 @@ import * as userDb from "../services/userDb.service.js";
 import * as petService from "../services/pet.service.js";
 import * as paymentService from "../services/userPayment.service.js";
 import { shapePublicUser } from "./authApi.controller.js";
-import { getOrganizationByOwnerUserId } from "../services/organization.service.js";
+import { getOrganizationByOwnerUserId, getOrganizationById } from "../services/organization.service.js";
+import { getMembershipByStaffUserId } from "../services/organizationMember.service.js";
+import * as discoveryService from "../services/discovery.service.js";
+import * as notificationHub from "../services/notificationHub.service.js";
 
 function requireRealUser(req, res) {
   const id = req.auth?.id;
@@ -19,11 +22,16 @@ export async function getMe(req, res) {
   try {
     const row = await userDb.getUserById(uid);
     if (!row) return res.status(404).json({ error: "User not found." });
+    const r = String(row.role || "").toLowerCase();
     let orgRow = null;
-    if (String(row.role || "").toLowerCase() === "org") {
+    let orgMember = null;
+    if (r === "org") {
       orgRow = await getOrganizationByOwnerUserId(uid);
+    } else if (r === "org_staff") {
+      orgMember = await getMembershipByStaffUserId(uid);
+      orgRow = orgMember ? await getOrganizationById(orgMember.organization_id) : null;
     }
-    res.json({ user: shapePublicUser(row, orgRow) });
+    res.json({ user: shapePublicUser(row, orgRow, orgMember) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Could not load profile." });
@@ -47,6 +55,8 @@ export async function putMe(req, res) {
       notify_email: body.notify_email,
       notify_push: body.notify_push,
       notify_marketing: body.notify_marketing,
+      notify_booking_reminder: body.notify_booking_reminder,
+      notify_org_broadcast: body.notify_org_broadcast,
     };
     const cleaned = Object.fromEntries(
       Object.entries(patch).filter(([, v]) => v !== undefined)
@@ -56,11 +66,16 @@ export async function putMe(req, res) {
     }
     const row = await userDb.updateUserProfile(uid, cleaned);
     if (!row) return res.status(404).json({ error: "User not found." });
+    const r2 = String(row.role || "").toLowerCase();
     let orgRow = null;
-    if (String(row.role || "").toLowerCase() === "org") {
+    let orgMember = null;
+    if (r2 === "org") {
       orgRow = await getOrganizationByOwnerUserId(uid);
+    } else if (r2 === "org_staff") {
+      orgMember = await getMembershipByStaffUserId(uid);
+      orgRow = orgMember ? await getOrganizationById(orgMember.organization_id) : null;
     }
-    res.json({ user: shapePublicUser(row, orgRow) });
+    res.json({ user: shapePublicUser(row, orgRow, orgMember) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Could not update profile." });
@@ -181,5 +196,83 @@ export async function postMyCard(req, res) {
     }
     console.error(err);
     res.status(500).json({ error: "Could not save card." });
+  }
+}
+
+export async function listMyCatalogFavorites(req, res) {
+  const uid = requireRealUser(req, res);
+  if (uid == null) return;
+  try {
+    const organizations = await discoveryService.listFavoriteOrganizations(uid);
+    res.json({ organizations });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not load favorites." });
+  }
+}
+
+export async function listMyCatalogRecent(req, res) {
+  const uid = requireRealUser(req, res);
+  if (uid == null) return;
+  try {
+    const organizations = await discoveryService.listRecentOrganizations(uid, { limit: 16 });
+    res.json({ organizations });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not load recents." });
+  }
+}
+
+export async function postMyCatalogFavorite(req, res) {
+  const uid = requireRealUser(req, res);
+  if (uid == null) return;
+  const oid = Number(req.body?.organization_id ?? req.body?.organizationId);
+  if (!Number.isFinite(oid)) return res.status(400).json({ error: "organization_id required." });
+  try {
+    await discoveryService.setFavoriteOrganization(uid, oid, true);
+    res.status(201).json({ ok: true, organization_id: oid });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not update favorite." });
+  }
+}
+
+export async function deleteMyCatalogFavorite(req, res) {
+  const uid = requireRealUser(req, res);
+  if (uid == null) return;
+  const oid = Number.parseInt(req.params.organizationId, 10);
+  if (!Number.isFinite(oid)) return res.status(400).json({ error: "Bad id." });
+  try {
+    await discoveryService.setFavoriteOrganization(uid, oid, false);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not remove favorite." });
+  }
+}
+
+export async function listMyNotifications(req, res) {
+  const uid = requireRealUser(req, res);
+  if (uid == null) return;
+  try {
+    const rows = await notificationHub.listInboxForUser(uid, { limit: 80 });
+    res.json({ notifications: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not load notifications." });
+  }
+}
+
+export async function patchNotificationRead(req, res) {
+  const uid = requireRealUser(req, res);
+  if (uid == null) return;
+  const nid = Number.parseInt(req.params.id, 10);
+  try {
+    const row = await notificationHub.markNotificationRead(uid, nid);
+    if (!row) return res.status(404).json({ error: "Not found." });
+    res.json({ notification: row });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not update notification." });
   }
 }

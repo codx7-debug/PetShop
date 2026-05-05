@@ -17,6 +17,14 @@ type ServiceRow = {
   price_cents?: number | null;
 };
 
+type PackageRow = {
+  id: number;
+  title: string;
+  description?: string | null;
+  duration_minutes?: number | null;
+  price_cents?: number | null;
+};
+
 function iconForOrgType(orgType: string): keyof typeof Ionicons.glyphMap {
   const k = orgType.trim().toLowerCase();
   if (k === "hotel") return "bed-outline";
@@ -35,6 +43,7 @@ export default function BookServiceScreen() {
   const orgType = String(orgTypeParam || "vet").toLowerCase();
   const theme = useMemo(() => getProviderDashboardTheme(orgType), [orgType]);
   const [rows, setRows] = useState<ServiceRow[]>([]);
+  const [packages, setPackages] = useState<PackageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState("");
@@ -46,13 +55,20 @@ export default function BookServiceScreen() {
       if (fromPull) setRefreshing(true);
       else setLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/api/organizations/${orgId}/services`);
-        const data = (await res.json()) as { services?: ServiceRow[]; error?: string };
-        if (!res.ok) throw new Error(data.error || res.statusText);
-        setRows(data.services || []);
+        const [svcRes, pkgRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/organizations/${orgId}/services`),
+          fetch(`${API_BASE_URL}/api/organizations/${orgId}/packages`),
+        ]);
+        const svcData = (await svcRes.json()) as { services?: ServiceRow[]; error?: string };
+        const pkgData = (await pkgRes.json()) as { packages?: PackageRow[]; error?: string };
+        if (!svcRes.ok) throw new Error(svcData.error || svcRes.statusText);
+        setRows(svcData.services || []);
+        if (pkgRes.ok) setPackages(pkgData.packages || []);
+        else setPackages([]);
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Error");
         setRows([]);
+        setPackages([]);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -80,6 +96,50 @@ export default function BookServiceScreen() {
           <Text style={styles.flowStepSub}>{t("browseServices.stepServiceHint")}</Text>
         </View>
       </View>
+      {!showSkeleton && packages.length > 0 ? (
+        <View style={{ marginBottom: 14 }}>
+          <Text style={[styles.pkgSectionTitle, { textAlign: isRTL ? "right" : "left" }]}>Bundles</Text>
+          {packages.map((p) => (
+            <TouchableOpacity
+              key={p.id}
+              style={[styles.card, { borderLeftColor: "#7c3aed", marginBottom: 10 }]}
+              activeOpacity={0.92}
+              onPress={() =>
+                router.push({
+                  pathname: "/book-appointment",
+                  params: {
+                    packageId: String(p.id),
+                    serviceTitle: p.title,
+                    durationMinutes:
+                      p.duration_minutes != null ? String(p.duration_minutes) : "60",
+                    orgName: orgName || "",
+                    orgType,
+                    orgId: String(orgId),
+                  },
+                })
+              }
+            >
+              <View style={[styles.cardTop, { flexDirection: rowDir }]}>
+                <View style={[styles.cardIcon, { backgroundColor: "#f5f3ff" }]}>
+                  <Ionicons name="layers-outline" size={22} color="#7c3aed" />
+                </View>
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardTitle}>{p.title}</Text>
+                  {p.price_cents != null ? (
+                    <Text style={styles.chipMutedTxt}>
+                      {t("bookService.priceLabel", { price: (p.price_cents / 100).toFixed(2) })}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+              <Text style={[styles.cardCta, { color: "#7c3aed" }]}>{t("bookService.book")}</Text>
+            </TouchableOpacity>
+          ))}
+          <Text style={[styles.pkgSectionTitle, { textAlign: isRTL ? "right" : "left", marginTop: 8 }]}>
+            A la carte
+          </Text>
+        </View>
+      ) : null}
       {err ? <Text style={styles.err}>{err}</Text> : null}
       {showSkeleton ? (
         <View style={{ paddingTop: 10 }}>
@@ -152,6 +212,7 @@ export default function BookServiceScreen() {
                   durationMinutes: item.duration_minutes != null ? String(item.duration_minutes) : "60",
                   orgName: orgName || "",
                   orgType,
+                  orgId: String(orgId),
                 },
               })
             }
@@ -285,6 +346,14 @@ const styles = StyleSheet.create({
     borderRightWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(226,232,240,0.9)",
     minHeight: 120,
+  },
+  pkgSectionTitle: {
+    marginHorizontal: 18,
+    marginBottom: 10,
+    fontSize: 13,
+    fontWeight: "900",
+    color: "#0f172a",
+    letterSpacing: 0.2,
   },
   flowStepRow: {
     marginHorizontal: 18,

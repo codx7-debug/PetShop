@@ -11,9 +11,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../contexts/LanguageContext";
-import { API_BASE_URL } from "../lib/api";
+import { API_BASE_URL, getAuthHeaders, parseResponseJson } from "../lib/api";
 import { OrgCardSkeleton } from "../components/ui/BookingSkeleton";
 
 type OrgRow = {
@@ -24,6 +26,8 @@ type OrgRow = {
   city?: string | null;
   country?: string | null;
 };
+
+type OrgMini = { id: number; display_name: string; org_type: string };
 
 const FILTER_IDS = new Set(["vet", "salon", "hotel", "rescue", "petshop", "trainer", "petsitter"]);
 
@@ -63,6 +67,46 @@ export default function BrowseServicesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState("");
   const [freeFilter, setFreeFilter] = useState<string | null>(null);
+  const [catalogFavs, setCatalogFavs] = useState<OrgMini[]>([]);
+  const [catalogRecent, setCatalogRecent] = useState<OrgMini[]>([]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const tok = await AsyncStorage.getItem("token");
+          if (!tok) {
+            if (!cancelled) {
+              setCatalogFavs([]);
+              setCatalogRecent([]);
+            }
+            return;
+          }
+          const [fRes, rRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/me/catalog/favorites`, { headers: await getAuthHeaders(false) }),
+            fetch(`${API_BASE_URL}/api/me/catalog/recent`, { headers: await getAuthHeaders(false) }),
+          ]);
+          const fParsed = await parseResponseJson<{ organizations?: OrgMini[] }>(fRes);
+          const rParsed = await parseResponseJson<{ organizations?: OrgMini[] }>(rRes);
+          if (!cancelled && fParsed.ok && fParsed.data?.organizations)
+            setCatalogFavs(fParsed.data.organizations);
+          else if (!cancelled && !fRes.ok) setCatalogFavs([]);
+          if (!cancelled && rParsed.ok && rParsed.data?.organizations)
+            setCatalogRecent(rParsed.data.organizations);
+          else if (!cancelled && !rRes.ok) setCatalogRecent([]);
+        } catch {
+          if (!cancelled) {
+            setCatalogFavs([]);
+            setCatalogRecent([]);
+          }
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   const categoryLock = useMemo(() => normalizeOrgType(params.orgType), [params.orgType]);
   const effectiveFilter = categoryLock ?? freeFilter;
@@ -211,6 +255,54 @@ export default function BrowseServicesScreen() {
       )}
 
       <Text style={[styles.flowHint, { textAlign: isRTL ? "right" : "left" }]}>{flowHintTxt}</Text>
+
+      {(catalogFavs.length > 0 || catalogRecent.length > 0) && (
+        <View style={{ marginBottom: 12 }}>
+          {catalogFavs.length > 0 ? (
+            <View style={{ marginBottom: 10 }}>
+              <Text style={[styles.subListTitle, { textAlign: isRTL ? "right" : "left" }]}>Favorites</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catMiniRow}>
+                {catalogFavs.map((o) => (
+                  <TouchableOpacity
+                    key={`f-${o.id}`}
+                    style={styles.catMiniChip}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/provider-profile",
+                        params: { orgId: String(o.id), orgName: o.display_name, orgType: o.org_type || "" },
+                      })
+                    }
+                  >
+                    <Text style={styles.catMiniChipTxt} numberOfLines={1}>{o.display_name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
+          {catalogRecent.length > 0 ? (
+            <View>
+              <Text style={[styles.subListTitle, { textAlign: isRTL ? "right" : "left" }]}>Recently viewed</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catMiniRow}>
+                {catalogRecent.map((o) => (
+                  <TouchableOpacity
+                    key={`r-${o.id}`}
+                    style={styles.catMiniChipMuted}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/provider-profile",
+                        params: { orgId: String(o.id), orgName: o.display_name, orgType: o.org_type || "" },
+                      })
+                    }
+                  >
+                    <Text style={styles.catMiniChipTxtMuted} numberOfLines={1}>{o.display_name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
+        </View>
+      )}
+
       {err ? <Text style={styles.err}>{err}</Text> : null}
       {showSkeleton ? (
         <View style={{ paddingTop: 8 }}>
@@ -397,6 +489,38 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontWeight: "500",
   },
+  subListTitle: {
+    paddingHorizontal: 18,
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#0f766e",
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  catMiniRow: { gap: 8, paddingHorizontal: 18 },
+  catMiniChip: {
+    maxWidth: 200,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#2B9B7A",
+    marginEnd: 4,
+  },
+  catMiniChipTxt: { fontSize: 13, fontWeight: "800", color: "#0f172a" },
+  catMiniChipMuted: {
+    maxWidth: 200,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#cbd5e1",
+    marginEnd: 4,
+  },
+  catMiniChipTxtMuted: { fontSize: 13, fontWeight: "700", color: "#475569" },
   err: {
     color: "#b91c1c",
     paddingHorizontal: 18,

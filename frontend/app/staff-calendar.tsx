@@ -78,7 +78,8 @@ export default function StaffCalendarScreen() {
           const r = String(u?.role ?? "")
             .trim()
             .toLowerCase();
-          if (r === "org" && u?.id != null) {
+          const ok = (r === "org" || r === "org_staff") && u?.id != null;
+          if (ok) {
             setOrgOk(true);
             setOrgType(String(u.org_type || "vet"));
           }
@@ -98,10 +99,10 @@ export default function StaffCalendarScreen() {
           const raw = await AsyncStorage.getItem("user");
           if (!raw) return;
           const u = JSON.parse(raw) as StoredUser;
-          if (String(u?.role ?? "")
+          const r0 = String(u?.role ?? "")
             .trim()
-            .toLowerCase() !== "org")
-            return;
+            .toLowerCase();
+          if (r0 !== "org" && r0 !== "org_staff") return;
           const res = await fetch(`${API_BASE_URL}/api/org/me`, {
             headers: await getAuthHeaders(false),
           });

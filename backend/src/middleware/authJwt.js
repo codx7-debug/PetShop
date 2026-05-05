@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { resolveOrgIdForPortal } from "../services/organizationMember.service.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "devsecretkey";
 
@@ -40,12 +41,30 @@ export function requireAuthJwt(req, res, next) {
   }
 }
 
-/** Organization owner routes (approved org accounts use same JWT as login). */
+/** Organization portal: owner (`org`) or invited staff (`org_staff`). Attaches `req.organizationContext`. */
 export function requireOrgJwt(req, res, next) {
   return requireAuthJwt(req, res, () => {
-    if (req.auth.role !== "org") {
+    const role = String(req.auth.role || "").trim().toLowerCase();
+    if (!["org", "org_staff"].includes(role)) {
       return res.status(403).json({ error: "Organization account required." });
     }
-    return next();
+    const jwtOrgRaw = req.auth.organizationId ?? req.auth.organization_id;
+    const jwtOrg = jwtOrgRaw != null ? Number(jwtOrgRaw) : null;
+    resolveOrgIdForPortal(Number(req.auth.id), role, Number.isFinite(jwtOrg) ? jwtOrg : null)
+      .then((orgId) => {
+        if (orgId == null) {
+          return res.status(403).json({ error: "No organization linked to this session." });
+        }
+        req.organizationContext = {
+          organizationId: orgId,
+          userId: Number(req.auth.id),
+          portalRole: role,
+        };
+        return next();
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).json({ error: "Could not resolve organization." });
+      });
   });
 }

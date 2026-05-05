@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -21,16 +22,21 @@ type PetRow = { id: number; name: string };
 export default function BookAppointmentScreen() {
   const { t, isRTL } = useLanguage();
   const params = useLocalSearchParams<{
-    serviceId: string;
+    serviceId?: string;
     serviceTitle?: string;
     durationMinutes?: string;
     orgName?: string;
     orgType?: string;
+    orgId?: string;
     petId?: string;
+    packageId?: string;
   }>();
-  const serviceId = Number(params.serviceId);
+  const packageId = params.packageId ? Number(params.packageId) : NaN;
+  const hasPackage = Number.isFinite(packageId);
+  const serviceId = params.serviceId ? Number(params.serviceId) : NaN;
   const initialPetId = params.petId ? Number(params.petId) : NaN;
   const durationMin = Math.max(15, Number(params.durationMinutes) || 60);
+  const orgIdNum = params.orgId ? Number(params.orgId) : NaN;
 
   const [token, setToken] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
@@ -38,6 +44,8 @@ export default function BookAppointmentScreen() {
   const [petId, setPetId] = useState<number | null>(null);
   const [loadingPets, setLoadingPets] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [weeklyCount, setWeeklyCount] = useState(1);
+  const [depositTry, setDepositTry] = useState("");
   const [startsIso, setStartsIso] = useState(() => {
     const d = new Date();
     d.setHours(d.getHours() + 26, 0, 0, 0);
@@ -92,8 +100,34 @@ export default function BookAppointmentScreen() {
     };
   }, [token, userId, initialPetId]);
 
+  const joinWaitlist = async () => {
+    if (!token || userId == null || petId == null) return;
+    const start = new Date(startsIso);
+    const end = new Date(start.getTime() + durationMin * 60 * 1000);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/appointments/waitlist`, {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
+          ownerUserId: userId,
+          petId,
+          serviceId: hasPackage ? null : serviceId,
+          organizationId: Number.isFinite(orgIdNum) ? orgIdNum : undefined,
+          startsAt: start.toISOString(),
+          endsAt: end.toISOString(),
+          displayTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        }),
+      });
+      const data = (await res.json()) as { error?: string; waitlist?: unknown };
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      Alert.alert("", "You’re on the waitlist. We’ll notify you in the app when a slot opens.");
+    } catch (e) {
+      Alert.alert("", e instanceof Error ? e.message : "—");
+    }
+  };
+
   const submit = async () => {
-    if (!Number.isFinite(serviceId)) {
+    if (!hasPackage && !Number.isFinite(serviceId)) {
       Alert.alert("", t("bookAppointment.badService"));
       return;
     }
@@ -114,27 +148,54 @@ export default function BookAppointmentScreen() {
       return;
     }
     const end = new Date(start.getTime() + durationMin * 60 * 1000);
+    const dep = Math.round((parseFloat(depositTry.replace(",", ".")) || 0) * 100);
     setSubmitting(true);
     try {
-      const body = {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      const body: Record<string, unknown> = {
         ownerUserId: userId,
         petId,
-        serviceId,
         startsAt: start.toISOString(),
-        endsAt: end.toISOString(),
-        displayTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        displayTimezone: tz,
         reminderChannel: "auto",
       };
+      if (hasPackage) {
+        body.packageId = packageId;
+        body.endsAt = end.toISOString();
+      } else {
+        body.serviceId = serviceId;
+        body.endsAt = end.toISOString();
+      }
+      if (weeklyCount > 1) {
+        body.recurrence = { frequency: "weekly", count: weeklyCount };
+      }
+      if (Number.isFinite(dep) && dep > 0) {
+        body.depositCents = dep;
+      }
       const res = await fetch(`${API_BASE_URL}/api/appointments`, {
         method: "POST",
         headers: await getAuthHeaders(),
         body: JSON.stringify(body),
       });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as {
+        error?: string;
+        code?: string;
+        recurring?: boolean;
+        appointments?: unknown[];
+      };
+      if (res.status === 409 && data.code === "SLOT_UNAVAILABLE") {
+        Alert.alert("Slot busy", "This time is unavailable. Join the waitlist?", [
+          { text: "No", style: "cancel" },
+          { text: "Join waitlist", onPress: () => void joinWaitlist() },
+        ]);
+        return;
+      }
       if (!res.ok) throw new Error(data.error || res.statusText);
-      Alert.alert(t("bookAppointment.successTitle"), t("bookAppointment.successBody"), [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      const msg =
+        data.recurring && Array.isArray(data.appointments) && data.appointments.length > 1
+          ? `${data.appointments.length} bookings created (weekly series).`
+          : t("bookAppointment.successBody");
+      Alert.alert(t("bookAppointment.successTitle"), msg, [{ text: "OK", onPress: () => router.back() }]);
     } catch (e) {
       Alert.alert(t("bookAppointment.failTitle"), e instanceof Error ? e.message : "—");
     } finally {
@@ -205,6 +266,32 @@ export default function BookAppointmentScreen() {
         >
           <Text style={styles.timeTxt}>{new Date(startsIso).toLocaleString()}</Text>
           <Text style={styles.timeTap}>{t("bookAppointment.tapAdvanceDay")}</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.label}>Repeat weekly ({weeklyCount}x)</Text>
+        <Text style={styles.hint}>1 = single visit only. Increase for a recurring series.</Text>
+        <View style={{ flexDirection: rowDir, flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+          {[1, 2, 4, 8].map((n) => (
+            <TouchableOpacity
+              key={n}
+              style={[styles.petChip, weeklyCount === n && styles.petChipOn]}
+              onPress={() => setWeeklyCount(n)}
+            >
+              <Text style={[styles.petChipTxt, weeklyCount === n && styles.petChipTxtOn]}>{`${n}x`}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.label}>Deposit (TRY, optional)</Text>
+        <Text style={styles.hint}>If your provider collects a prepaid hold, enter amount here (informational).</Text>
+        <TouchableOpacity style={styles.timeBtn} activeOpacity={0.9}>
+          <TextInput
+            style={{ fontSize: 16, fontWeight: "600", color: "#0f172a" }}
+            keyboardType="decimal-pad"
+            placeholder="0"
+            value={depositTry}
+            onChangeText={setDepositTry}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity

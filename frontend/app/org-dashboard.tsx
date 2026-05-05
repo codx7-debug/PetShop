@@ -163,7 +163,7 @@ export default function OrgDashboardScreen() {
       const role = String(u.role ?? "")
         .trim()
         .toLowerCase();
-      if (role !== "org") {
+      if (role !== "org" && role !== "org_staff") {
         router.replace({ pathname: "/home" });
         return;
       }
@@ -424,6 +424,22 @@ export default function OrgDashboardScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              style={[styles.tile, styles.shadow]}
+              activeOpacity={0.92}
+              onPress={() => router.push({ pathname: "/org-operations" })}
+            >
+              <LinearGradient colors={["#ffffff", theme.accentSoft]} style={styles.tileInner}>
+                <View style={[styles.tileIcon, { backgroundColor: theme.accentSoft }]}>
+                  <Ionicons name="construct-outline" size={26} color={theme.accent} />
+                </View>
+                <Text style={styles.tileTitle}>Bundles, staff & broadcasts</Text>
+                <Text style={styles.tileDesc} numberOfLines={3}>
+                  Create service bundles, invite staff logins, retail stock lines, waitlist, and customer broadcasts.
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
             {orgType.trim().toLowerCase() === "vet" ? (
               <TouchableOpacity

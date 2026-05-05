@@ -8,14 +8,18 @@ import {
   RefreshControl,
   Linking,
   Platform,
+  TextInput,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
+import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../contexts/LanguageContext";
-import { API_BASE_URL, parseResponseJson } from "../lib/api";
+import { API_BASE_URL, parseResponseJson, getAuthHeaders } from "../lib/api";
 import { getProviderDashboardTheme } from "../components/org/providerDashboardTheme";
 import { ServiceCardSkeleton } from "../components/ui/BookingSkeleton";
 
@@ -40,6 +44,24 @@ type ServiceRow = {
   description?: string | null;
   duration_minutes?: number | null;
   price_cents?: number | null;
+};
+
+type PackageRow = {
+  id: number;
+  title: string;
+  description?: string | null;
+  duration_minutes?: number | null;
+  price_cents?: number | null;
+};
+
+type ReviewRow = {
+  id: number;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  reviewer_name?: string | null;
+  created_at?: string;
+  photo_urls?: string[];
 };
 
 function iconForOrgType(orgType: string): keyof typeof Ionicons.glyphMap {
@@ -80,6 +102,12 @@ export default function ProviderProfileScreen() {
 
   const [org, setOrg] = useState<OrgPublic | null>(null);
   const [services, setServices] = useState<ServiceRow[]>([]);
+  const [packages, setPackages] = useState<PackageRow[]>([]);
+  const [reviews, setReviews] = useState<ReviewRow[]>([]);
+  const [favorited, setFavorited] = useState(false);
+  const [reviewStars, setReviewStars] = useState(5);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewBusy, setReviewBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState("");
@@ -102,6 +130,7 @@ export default function ProviderProfileScreen() {
         const parsed = await parseResponseJson<{
           organization?: OrgPublic;
           services?: ServiceRow[];
+          packages?: PackageRow[];
           error?: string;
         }>(res);
         if (parsed.data == null) {
@@ -115,10 +144,12 @@ export default function ProviderProfileScreen() {
         if (!data.organization) throw new Error("Missing organization.");
         setOrg(data.organization);
         setServices(Array.isArray(data.services) ? data.services : []);
+        setPackages(Array.isArray(data.packages) ? data.packages : []);
       } catch (e) {
         setErr(e instanceof Error ? e.message : t("providerProfile.loadError"));
         setOrg(null);
         setServices([]);
+        setPackages([]);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -127,9 +158,111 @@ export default function ProviderProfileScreen() {
     [orgId, t]
   );
 
+  const loadReviews = useCallback(async () => {
+    if (!orgId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/organizations/${encodeURIComponent(orgId)}/reviews?limit=20`);
+      const parsed = await parseResponseJson<{ reviews?: ReviewRow[] }>(res);
+      if (parsed.ok && parsed.data?.reviews) setReviews(parsed.data.reviews);
+      else setReviews([]);
+    } catch {
+      setReviews([]);
+    }
+  }, [orgId]);
+
   React.useEffect(() => {
     void load(false);
   }, [load]);
+
+  React.useEffect(() => {
+    void loadReviews();
+  }, [loadReviews]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void (async () => {
+        try {
+          const tok = await AsyncStorage.getItem("token");
+          if (!tok || !orgId) return;
+          await fetch(`${API_BASE_URL}/api/organizations/${encodeURIComponent(orgId)}/recent-view`, {
+            method: "POST",
+            headers: await getAuthHeaders(false),
+          });
+        } catch {
+          /* */
+        }
+      })();
+    }, [orgId])
+  );
+
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const tok = await AsyncStorage.getItem("token");
+        if (!tok || !orgId) {
+          setFavorited(false);
+          return;
+        }
+        const res = await fetch(`${API_BASE_URL}/api/me/catalog/favorites`, { headers: await getAuthHeaders(false) });
+        const parsed = await parseResponseJson<{ organizations?: { id: number }[] }>(res);
+        const ids = (parsed.data?.organizations || []).map((o) => o.id);
+        setFavorited(ids.includes(Number(orgId)));
+      } catch {
+        setFavorited(false);
+      }
+    })();
+  }, [orgId, org?.id]);
+
+  const toggleFavorite = async () => {
+    try {
+      const tok = await AsyncStorage.getItem("token");
+      if (!tok || !orgId) {
+        Alert.alert("", "Sign in to save favorites.");
+        return;
+      }
+      if (favorited) {
+        const res = await fetch(`${API_BASE_URL}/api/me/catalog/favorites/${encodeURIComponent(orgId)}`, {
+          method: "DELETE",
+          headers: await getAuthHeaders(false),
+        });
+        if (res.ok) setFavorited(false);
+      } else {
+        const res = await fetch(`${API_BASE_URL}/api/me/catalog/favorites`, {
+          method: "POST",
+          headers: await getAuthHeaders(),
+          body: JSON.stringify({ organization_id: Number(orgId) }),
+        });
+        if (res.ok) setFavorited(true);
+      }
+    } catch {
+      Alert.alert("", "Could not update favorite.");
+    }
+  };
+
+  const submitReview = async () => {
+    try {
+      const tok = await AsyncStorage.getItem("token");
+      if (!tok) {
+        Alert.alert("", "Sign in to leave a review.");
+        return;
+      }
+      setReviewBusy(true);
+      const res = await fetch(`${API_BASE_URL}/api/organizations/${encodeURIComponent(orgId)}/reviews`, {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ rating: reviewStars, body: reviewText.trim() }),
+      });
+      const parsed = await parseResponseJson(res);
+      if (!parsed.ok) throw new Error("—");
+      setReviewText("");
+      await load(false);
+      await loadReviews();
+    } catch {
+      Alert.alert("", "Could not submit review.");
+    } finally {
+      setReviewBusy(false);
+    }
+  };
 
   const displayName = org?.display_name || prefetchName || "—";
 
@@ -164,6 +297,9 @@ export default function ProviderProfileScreen() {
             <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.topBarSpacer} />
+          <TouchableOpacity style={styles.circleBtn} hitSlop={12} onPress={() => void toggleFavorite()}>
+            <Ionicons name={favorited ? "heart" : "heart-outline"} size={22} color="#fff" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.circleBtn} hitSlop={12} onPress={() => void load(true)}>
             <Ionicons name="refresh-outline" size={21} color="#fff" />
           </TouchableOpacity>
@@ -236,6 +372,48 @@ export default function ProviderProfileScreen() {
                 )}
               </View>
 
+              <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left", marginTop: 22 }]}>Reviews</Text>
+              <View style={[styles.card, { borderLeftColor: theme.accent }]}>
+                {reviews.length === 0 ? (
+                  <Text style={[styles.muted, { textAlign: isRTL ? "right" : "left" }]}>No written reviews yet.</Text>
+                ) : (
+                  reviews.map((r) => (
+                    <View key={r.id} style={{ marginBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#e2e8f0", paddingBottom: 10 }}>
+                      <View style={{ flexDirection: rowDir, justifyContent: "space-between", alignItems: "center" }}>
+                        <Text style={{ fontWeight: "800", color: "#0f172a" }}>{r.reviewer_name || "Customer"}</Text>
+                        <StarRow value={Number(r.rating) || 5} size={16} />
+                      </View>
+                      {r.body ? (
+                        <Text style={{ marginTop: 6, color: "#475569", textAlign: isRTL ? "right" : "left" }}>{r.body}</Text>
+                      ) : null}
+                    </View>
+                  ))
+                )}
+                <Text style={[styles.muted, { marginTop: 8, marginBottom: 6 }]}>Your review (one per account)</Text>
+                <View style={{ flexDirection: rowDir, gap: 8, marginBottom: 8 }}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <TouchableOpacity key={n} onPress={() => setReviewStars(n)}>
+                      <Ionicons name={reviewStars >= n ? "star" : "star-outline"} size={24} color="#f59e0b" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={styles.reviewInput}
+                  placeholder="Share your experience…"
+                  placeholderTextColor="#94a3b8"
+                  value={reviewText}
+                  onChangeText={setReviewText}
+                  multiline
+                />
+                <TouchableOpacity
+                  style={[styles.mapsBtn, { backgroundColor: theme.accent, justifyContent: "center" }]}
+                  onPress={() => void submitReview()}
+                  disabled={reviewBusy}
+                >
+                  <Text style={[styles.mapsBtnTxt, { color: "#fff" }]}>{reviewBusy ? "Sending…" : "Post review"}</Text>
+                </TouchableOpacity>
+              </View>
+
               <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left", marginTop: 22 }]}>
                 {t("providerProfile.location")}
               </Text>
@@ -288,6 +466,51 @@ export default function ProviderProfileScreen() {
                 <Text style={[styles.photosHint, { textAlign: isRTL ? "right" : "left" }]}>{t("providerProfile.photosEmpty")}</Text>
               ) : null}
 
+              {packages.length > 0 ? (
+                <>
+                  <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left", marginTop: 26 }]}>Bundles</Text>
+                  {packages.map((p) => (
+                    <TouchableOpacity
+                      key={`pkg-${p.id}`}
+                      style={[styles.svcCard, { borderLeftColor: "#7c3aed" }]}
+                      activeOpacity={0.92}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/book-appointment",
+                          params: {
+                            packageId: String(p.id),
+                            serviceTitle: p.title,
+                            durationMinutes:
+                              p.duration_minutes != null ? String(p.duration_minutes) : "60",
+                            orgName: displayName,
+                            orgType,
+                            orgId: String(orgId),
+                          },
+                        })
+                      }
+                    >
+                      <View style={[styles.svcTop, { flexDirection: rowDir }]}>
+                        <View style={[styles.svcIcon, { backgroundColor: "#f5f3ff" }]}>
+                          <Ionicons name="layers-outline" size={21} color="#7c3aed" />
+                        </View>
+                        <View style={styles.svcBody}>
+                          <Text style={[styles.svcTitle, { textAlign: isRTL ? "right" : "left" }]}>{p.title}</Text>
+                          {p.price_cents != null ? (
+                            <Text style={[styles.chipMutedTxt, { marginTop: 6 }]}>
+                              {t("bookService.priceLabel", { price: (p.price_cents / 100).toFixed(2) })}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                      <View style={[styles.bookRow, { flexDirection: rowDir }]}>
+                        <Text style={[styles.bookBtnTxt, { color: "#7c3aed" }]}>{t("providerProfile.book")}</Text>
+                        <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={20} color="#7c3aed" />
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              ) : null}
+
               <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left", marginTop: 26 }]}>
                 {t("providerProfile.services")}
               </Text>
@@ -311,6 +534,7 @@ export default function ProviderProfileScreen() {
                           durationMinutes: item.duration_minutes != null ? String(item.duration_minutes) : "60",
                           orgName: displayName,
                           orgType,
+                          orgId: String(orgId),
                         },
                       })
                     }
@@ -471,6 +695,17 @@ const styles = StyleSheet.create({
   ratingRow: { alignItems: "center", gap: 12 },
   ratingNum: { fontSize: 22, fontWeight: "900", color: "#0f172a" },
   ratingSummary: { fontSize: 13, color: "#64748b", fontWeight: "600", marginTop: 4 },
+  reviewInput: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 80,
+    marginBottom: 12,
+    fontSize: 15,
+    color: "#0f172a",
+    textAlignVertical: "top",
+  },
   mapsBtn: {
     marginTop: 14,
     alignSelf: "flex-start",

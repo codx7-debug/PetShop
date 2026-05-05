@@ -51,6 +51,13 @@ export async function getOrganizationById(id) {
   return rows[0] || null;
 }
 
+export async function getOrganizationOwnerUserId(organizationId) {
+  const { rows } = await pool.query(`SELECT owner_user_id FROM organizations WHERE id = $1 LIMIT 1`, [
+    organizationId,
+  ]);
+  return rows[0]?.owner_user_id ?? null;
+}
+
 /** Listed org profile (active org accounts only); null if hidden or missing. */
 export async function getOrganizationPublicById(id) {
   const { rows } = await pool.query(

@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import * as appointmentService from "../services/appointment.service.js";
+import { getOrganizationByOwnerUserId } from "../services/organization.service.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "devsecretkey";
 
@@ -59,8 +60,8 @@ export async function appointmentWriteMiddleware(req, res, next) {
         if (!Number.isFinite(ownerId) || ownerId !== uid) {
           return res.status(403).json({ error: "You can only book for your own account." });
         }
-      } else if (role === "org" || role === "admin" || uid === 0) {
-        /* org/admin may book on behalf of customers */
+      } else if (role === "org" || role === "org_staff" || role === "admin" || uid === 0) {
+        /* org / staff may book on behalf of customers */
       } else {
         return res.status(403).json({ error: "Sign in as a user or organization to book." });
       }
@@ -73,7 +74,7 @@ export async function appointmentWriteMiddleware(req, res, next) {
         if (!Number.isFinite(ownerId) || ownerId !== uid) {
           return res.status(403).json({ error: "You can only add pets to your own account." });
         }
-      } else if (role === "org" || role === "admin" || uid === 0) {
+      } else if (role === "org" || role === "org_staff" || role === "admin" || uid === 0) {
         /* staff / org adding pet for a customer */
       } else {
         return res.status(403).json({ error: "Not allowed." });
@@ -82,10 +83,21 @@ export async function appointmentWriteMiddleware(req, res, next) {
     }
 
     if (method === "POST" && path === "/holidays") {
-      if (role === "org" || role === "admin" || uid === 0) {
+      if (role === "org" || role === "org_staff" || role === "admin" || uid === 0) {
         return next();
       }
       return res.status(403).json({ error: "Organization or admin required." });
+    }
+
+    if (method === "POST" && path === "/appointments/waitlist") {
+      if (role !== "user") {
+        return res.status(403).json({ error: "Only signed-in pet owners may join waitlists." });
+      }
+      const ownerId = Number(req.body?.owner_user_id ?? req.body?.ownerUserId);
+      if (!Number.isFinite(ownerId) || ownerId !== uid) {
+        return res.status(403).json({ error: "You can only add yourself to a waitlist." });
+      }
+      return next();
     }
 
     const patchAppt = method === "PATCH" && path.startsWith("/appointments/");
@@ -105,8 +117,23 @@ export async function appointmentWriteMiddleware(req, res, next) {
       if (role === "user" && Number(row.owner_user_id) === uid) {
         return next();
       }
-      if (role === "org" && Number(row.clinic_staff_user_id) === uid) {
+      const apptOrgId = await appointmentService.getAppointmentServiceOrganizationId(row);
+      if (
+        role === "org_staff" &&
+        Number.isFinite(Number(decoded.organizationId)) &&
+        apptOrgId != null &&
+        Number(decoded.organizationId) === apptOrgId
+      ) {
         return next();
+      }
+      if (role === "org") {
+        const ownerOrg = await getOrganizationByOwnerUserId(uid);
+        if (ownerOrg && apptOrgId != null && Number(ownerOrg.id) === Number(apptOrgId)) {
+          return next();
+        }
+        if (Number(row.clinic_staff_user_id) === uid) {
+          return next();
+        }
       }
       return res.status(403).json({ error: "Not allowed to change this appointment." });
     }
@@ -134,7 +161,7 @@ export function petsByOwnerListMiddleware(req, res, next) {
   if (role === "admin" || uid === 0) {
     return next();
   }
-  if (role === "org") {
+  if (role === "org" || role === "org_staff") {
     return next();
   }
   if (role === "user" && ownerParam === uid) {

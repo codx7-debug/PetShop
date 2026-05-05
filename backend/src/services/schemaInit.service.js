@@ -55,6 +55,12 @@ const STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_appointments_starts ON appointments (starts_at) WHERE status = 'scheduled'`,
   `CREATE INDEX IF NOT EXISTS idx_appointments_staff ON appointments (clinic_staff_user_id, starts_at)`,
   `CREATE INDEX IF NOT EXISTS idx_holidays_date ON clinic_holidays (holiday_date)`,
+  `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS deposit_cents INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS deposit_paid_at TIMESTAMPTZ`,
+  `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS no_show_fee_cents INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS no_show_marked_at TIMESTAMPTZ`,
+  `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS recurrence_group UUID`,
+  `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS package_id INTEGER`,
 ];
 
 export async function initAppointmentSchema() {

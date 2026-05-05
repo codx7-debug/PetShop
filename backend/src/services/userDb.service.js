@@ -43,6 +43,8 @@ const PROFILE_FIELDS = [
   "notify_email",
   "notify_push",
   "notify_marketing",
+  "notify_booking_reminder",
+  "notify_org_broadcast",
 ];
 
 export async function updateUserProfile(userId, patch) {

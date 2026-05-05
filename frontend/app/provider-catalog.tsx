@@ -103,7 +103,7 @@ export default function ProviderCatalogScreen() {
       const role = String(u?.role ?? "")
         .trim()
         .toLowerCase();
-      if (role !== "org") {
+      if (role !== "org" && role !== "org_staff") {
         router.replace("/home");
         return;
       }

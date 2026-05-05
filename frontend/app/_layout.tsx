@@ -45,6 +45,7 @@ function ThemedApp() {
         <Stack.Screen name="profile-notifications" options={{ presentation: "card" }} />
         <Stack.Screen name="profile-pets" options={{ presentation: "card" }} />
         <Stack.Screen name="org-reports" options={{ presentation: "card" }} />
+        <Stack.Screen name="org-operations" options={{ presentation: "card" }} />
         <Stack.Screen name="admin-dashboard" options={{ presentation: "card" }} />
       </Stack>
       <StatusBar style="dark" backgroundColor={backgroundColor} />

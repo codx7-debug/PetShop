@@ -1,7 +1,12 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import * as userDb from "../services/userDb.service.js";
-import { createOrganizationForOwner, getOrganizationByOwnerUserId } from "../services/organization.service.js";
+import {
+  createOrganizationForOwner,
+  getOrganizationByOwnerUserId,
+  getOrganizationById,
+} from "../services/organization.service.js";
+import { getMembershipByStaffUserId } from "../services/organizationMember.service.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "devsecretkey";
 
@@ -18,7 +23,7 @@ function readAdminLoginPassword() {
 }
 
 /** Stable JSON shape for clients (always includes `role`). */
-export function shapePublicUser(row, orgProfile = null) {
+export function shapePublicUser(row, orgProfile = null, orgMemberRow = null) {
   if (!row) return null;
   const base = {
     id: row.id,
@@ -39,7 +44,17 @@ export function shapePublicUser(row, orgProfile = null) {
     notify_email: row.notify_email !== false,
     notify_push: row.notify_push !== false,
     notify_marketing: Boolean(row.notify_marketing),
+    notify_booking_reminder: row.notify_booking_reminder !== false,
+    notify_org_broadcast: row.notify_org_broadcast !== false,
   };
+  if (orgMemberRow && base.role === "org_staff") {
+    return {
+      ...base,
+      org_type: orgProfile?.org_type ?? null,
+      organization_id: orgMemberRow.organization_id ?? null,
+      org_member_role: orgMemberRow.role_in_org ?? null,
+    };
+  }
   if (orgProfile && base.role === "org") {
     return {
       ...base,
@@ -72,7 +87,10 @@ function validateLoginInput({ email, password }) {
 export async function register(req, res) {
   try {
     const { full_name, email, password, role, org_name, org_contact } = req.body;
-    const safeRole = role === "org" ? "org" : "user";
+    let safeRole = role === "org" ? "org" : "user";
+    if (String(role || "").trim().toLowerCase() === "org_staff") {
+      return res.status(400).json({ message: "Organization staff accounts are created by your organization admin." });
+    }
 
     const validationError = validateRegisterInput({ full_name, email, password, role: safeRole, org_name, org_contact });
     if (validationError) return res.status(400).json({ message: validationError });
@@ -202,16 +220,34 @@ export async function login(req, res) {
     }
 
     let orgRow = null;
+    let orgMember = null;
     if (user.role === "org") {
       orgRow = await getOrganizationByOwnerUserId(user.id);
+    } else if (user.role === "org_staff") {
+      orgMember = await getMembershipByStaffUserId(user.id);
+      orgRow = orgMember ? await getOrganizationById(orgMember.organization_id) : null;
     }
-    const publicUser = shapePublicUser(user, orgRow);
+
+    if (user.role === "org_staff" && (!orgMember || !orgRow)) {
+      return res.status(403).json({
+        message: "This staff login is not linked to an organization.",
+        code: "ORG_STAFF_ORPHAN",
+      });
+    }
+
+    const publicUser = shapePublicUser(user, orgRow, orgMember);
     const payload = { id: publicUser.id, role: publicUser.role, email: publicUser.email };
+    if (user.role === "org" && orgRow?.id != null) payload.organizationId = orgRow.id;
+    if (user.role === "org_staff" && orgMember?.organization_id != null) {
+      payload.organizationId = orgMember.organization_id;
+      payload.orgMemberRole = orgMember.role_in_org;
+    }
+
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "12h" });
     return res.json({
       token,
       user: publicUser,
-      service_provider: publicUser.role === "org",
+      service_provider: publicUser.role === "org" || publicUser.role === "org_staff",
     });
   } catch (err) {
     console.error("Login error:", err);
