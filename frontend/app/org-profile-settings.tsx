@@ -21,6 +21,10 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useLanguage } from "../contexts/LanguageContext";
 import { API_BASE_URL, getAuthHeaders, parseResponseJson } from "../lib/api";
 import { getProviderDashboardTheme } from "../components/org/providerDashboardTheme";
+import { LanguageShortcutsBar } from "../components/LanguageShortcutsBar";
+import type { AppLocale } from "../i18n/translations";
+
+const SUPPORT_EMAIL = (process.env.EXPO_PUBLIC_SUPPORT_EMAIL || "").trim() || "support@petora.com";
 
 type OrgRow = {
   display_name?: string | null;
@@ -34,7 +38,7 @@ type OrgRow = {
 };
 
 export default function OrgProfileSettingsScreen() {
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, locale, setLocale } = useLanguage();
   const rowDir = isRTL ? "row-reverse" : "row";
   const align = isRTL ? "right" : "left";
 
@@ -49,7 +53,18 @@ export default function OrgProfileSettingsScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [changingLocale, setChangingLocale] = useState(false);
   const theme = useMemo(() => getProviderDashboardTheme(orgType), [orgType]);
+
+  const onChangeLocale = async (next: AppLocale) => {
+    if (next === locale) return;
+    setChangingLocale(true);
+    try {
+      await setLocale(next);
+    } finally {
+      setChangingLocale(false);
+    }
+  };
 
   const hydrate = useCallback(async () => {
     setLoading(true);
@@ -149,7 +164,7 @@ export default function OrgProfileSettingsScreen() {
         throw new Error(parsed.data?.error || t("orgProfileSettings.saveError"));
       }
       Alert.alert("", t("orgProfileSettings.saved"), [
-        { text: "OK", onPress: () => router.back() },
+        { text: t("common.ok"), onPress: () => router.back() },
       ]);
     } catch (e) {
       Alert.alert("", e instanceof Error ? e.message : t("orgProfileSettings.saveError"));
@@ -183,6 +198,18 @@ export default function OrgProfileSettingsScreen() {
               <ActivityIndicator color={theme.accent} style={{ marginVertical: 24 }} />
             ) : (
               <>
+                <Text style={[styles.section, { textAlign: align }]}>{t("orgProfileSettings.languageSection")}</Text>
+                <Text style={[styles.hint, { textAlign: align }]}>{t("orgProfileSettings.languageHint")}</Text>
+                <View style={{ marginBottom: 18 }}>
+                  <LanguageShortcutsBar
+                    variant="accent"
+                    locale={locale}
+                    onSelect={onChangeLocale}
+                    isRTL={isRTL}
+                    disabled={changingLocale}
+                    accentColor={theme.accent}
+                  />
+                </View>
                 <Text style={[styles.label, { textAlign: align }]}>{t("orgProfileSettings.nameLabel")}</Text>
                 <TextInput
                   style={[styles.input, { textAlign: align }]}
@@ -272,6 +299,18 @@ export default function OrgProfileSettingsScreen() {
                     <Text style={styles.saveTxt}>{t("orgProfileSettings.save")}</Text>
                   )}
                 </TouchableOpacity>
+
+                <View style={[styles.closeAccountPanel, { borderColor: theme.accent + "44" }]}>
+                  <View style={[styles.closeAccountHead, { flexDirection: rowDir }]}>
+                    <Ionicons name="mail-outline" size={22} color={theme.accent} />
+                    <Text style={[styles.closeAccountTitle, { color: "#0f172a", textAlign: align }]}>
+                      {t("orgProfileSettings.closeAccountTitle")}
+                    </Text>
+                  </View>
+                  <Text style={[styles.closeAccountBody, { textAlign: align }]}>
+                    {t("orgProfileSettings.closeAccountBody", { email: SUPPORT_EMAIL })}
+                  </Text>
+                </View>
               </>
             )}
           </View>
@@ -378,4 +417,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   saveTxt: { fontSize: 17, fontWeight: "900", color: "#fff" },
+  closeAccountPanel: {
+    marginTop: 28,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+  },
+  closeAccountHead: { alignItems: "center", gap: 10, marginBottom: 10 },
+  closeAccountTitle: { flex: 1, fontSize: 15, fontWeight: "900", lineHeight: 21 },
+  closeAccountBody: { fontSize: 13, color: "#64748b", lineHeight: 20 },
 });

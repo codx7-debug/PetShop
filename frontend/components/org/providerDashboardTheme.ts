@@ -6,7 +6,14 @@ export type ProviderDashboardTheme = {
   gradient: [string, string, string];
   accent: string;
   accentSoft: string;
-  icon: "medkit-outline" | "cut-outline" | "bed-outline" | "heart-outline" | string;
+  icon:
+    | "medkit-outline"
+    | "sparkles-outline"
+    | "bed-outline"
+    | "heart-outline"
+    | "bag-handle-outline"
+    | "school-outline"
+    | "home-outline";
   kickerKey: string;
 };
 

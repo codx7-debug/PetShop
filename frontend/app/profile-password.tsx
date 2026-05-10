@@ -47,7 +47,7 @@ export default function ProfilePasswordScreen() {
         const msg = (parsed.data as { message?: string } | null)?.message || res.statusText;
         throw new Error(msg);
       }
-      Alert.alert("", t("userProfile.pwSuccess"), [{ text: "OK", onPress: () => router.back() }]);
+      Alert.alert("", t("userProfile.pwSuccess"), [{ text: t("common.ok"), onPress: () => router.back() }]);
       setOldP("");
       setNewP("");
       setNewP2("");

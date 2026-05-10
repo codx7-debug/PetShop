@@ -17,11 +17,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../contexts/LanguageContext";
 import { API_BASE_URL, getAuthHeaders, parseResponseJson } from "../lib/api";
 import { getProviderDashboardTheme } from "../components/org/providerDashboardTheme";
+import OrgScreenKeyboardAvoiding from "../components/org/OrgScreenKeyboardAvoiding";
 
 type UserLite = { role?: string; org_type?: string | null };
 
 export default function OrgOperationsScreen() {
-  const { isRTL } = useLanguage();
+  const { t, isRTL } = useLanguage();
   const rowDir = isRTL ? "row-reverse" : "row";
   const [gate, setGate] = useState<"load" | "ok" | "no">("load");
   const [orgType, setOrgType] = useState("vet");
@@ -54,12 +55,12 @@ export default function OrgOperationsScreen() {
         const u = JSON.parse(raw) as UserLite;
         const r = String(u.role || "").toLowerCase();
         if (r === "org_staff") {
-          Alert.alert("", "Ask your owner to manage bundles, stock, and broadcasts.");
+          Alert.alert("", t("orgOperations.staffBlocked"));
           router.back();
           return;
         }
         if (r !== "org") {
-          Alert.alert("", "Only the organization owner can open this console.");
+          Alert.alert("", t("orgOperations.ownerOnly"));
           router.back();
           return;
         }
@@ -110,11 +111,11 @@ export default function OrgOperationsScreen() {
       });
       const parsed = await parseResponseJson(res);
       if (!parsed.ok) throw new Error((parsed.data as { error?: string })?.error || "—");
-      Alert.alert("", "Bundle created.");
+      Alert.alert("", t("orgOperations.bundleCreated"));
       setPkgTitle("");
       setPkgPrice("");
     } catch (e) {
-      Alert.alert("", e instanceof Error ? e.message : "Failed");
+      Alert.alert("", e instanceof Error ? e.message : t("login.errGeneric"));
     } finally {
       setLoading(false);
     }
@@ -135,12 +136,12 @@ export default function OrgOperationsScreen() {
       });
       const parsed = await parseResponseJson(res);
       if (!parsed.ok) throw new Error((parsed.data as { error?: string })?.error || "—");
-      Alert.alert("", "Staff account created. They can sign in with this email.");
+      Alert.alert("", t("orgOperations.staffCreated"));
       setStaffEmail("");
       setStaffPass("");
       setStaffName("");
     } catch (e) {
-      Alert.alert("", e instanceof Error ? e.message : "Failed");
+      Alert.alert("", e instanceof Error ? e.message : t("login.errGeneric"));
     } finally {
       setLoading(false);
     }
@@ -160,12 +161,12 @@ export default function OrgOperationsScreen() {
       });
       const parsed = await parseResponseJson(res);
       if (!parsed.ok) throw new Error((parsed.data as { error?: string })?.error || "—");
-      Alert.alert("", "Inventory saved.");
+      Alert.alert("", t("orgOperations.inventorySaved"));
       setSku("");
       setInvName("");
       setInvQty("0");
     } catch (e) {
-      Alert.alert("", e instanceof Error ? e.message : "Failed");
+      Alert.alert("", e instanceof Error ? e.message : t("login.errGeneric"));
     } finally {
       setLoading(false);
     }
@@ -181,11 +182,11 @@ export default function OrgOperationsScreen() {
       });
       const parsed = await parseResponseJson<{ delivered_count?: number }>(res);
       if (!parsed.ok) throw new Error((parsed.data as { error?: string })?.error || "—");
-      Alert.alert("", `Sent to ${parsed.data?.delivered_count ?? 0} pet parents (favorites + past bookings).`);
+      Alert.alert("", t("orgOperations.broadcastSent", { count: parsed.data?.delivered_count ?? 0 }));
       setBcTitle("");
       setBcBody("");
     } catch (e) {
-      Alert.alert("", e instanceof Error ? e.message : "Failed");
+      Alert.alert("", e instanceof Error ? e.message : t("login.errGeneric"));
     } finally {
       setLoading(false);
     }
@@ -205,17 +206,17 @@ export default function OrgOperationsScreen() {
         <TouchableOpacity style={styles.back} onPress={() => router.back()}>
           <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={22} color="#0f172a" />
         </TouchableOpacity>
-        <Text style={styles.title}>Org console</Text>
+        <Text style={styles.title}>{t("orgOperations.title")}</Text>
         <View style={{ width: 40 }} />
       </View>
       <View style={[styles.tabs, { flexDirection: rowDir }]}>
         {(
           [
-            ["pkg", "Bundles"],
-            ["staff", "Staff"],
-            ["inv", "Stock"],
-            ["bc", "Broadcast"],
-            ["wait", "Waitlist"],
+            ["pkg", t("orgOperations.tabBundles")],
+            ["staff", t("orgOperations.tabStaff")],
+            ["inv", t("orgOperations.tabStock")],
+            ["bc", t("orgOperations.tabBroadcast")],
+            ["wait", t("orgOperations.tabWaitlist")],
           ] as const
         ).map(([k, lbl]) => (
           <TouchableOpacity
@@ -228,72 +229,73 @@ export default function OrgOperationsScreen() {
         ))}
       </View>
 
+      <OrgScreenKeyboardAvoiding>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {loading ? <ActivityIndicator color={theme.accent} style={{ marginVertical: 8 }} /> : null}
 
         {tab === "pkg" ? (
           <View style={styles.card}>
-            <Text style={styles.label}>Bundle title</Text>
-            <TextInput style={styles.input} value={pkgTitle} onChangeText={setPkgTitle} placeholder="e.g. Bath + nails" />
-            <Text style={styles.label}>Duration (min)</Text>
+            <Text style={styles.label}>{t("orgOperations.bundleTitle")}</Text>
+            <TextInput style={styles.input} value={pkgTitle} onChangeText={setPkgTitle} placeholder={t("orgOperations.bundleTitlePh")} />
+            <Text style={styles.label}>{t("orgOperations.durationMin")}</Text>
             <TextInput style={styles.input} value={pkgDur} onChangeText={setPkgDur} keyboardType="number-pad" />
-            <Text style={styles.label}>Price (TRY)</Text>
+            <Text style={styles.label}>{t("orgOperations.priceTry")}</Text>
             <TextInput style={styles.input} value={pkgPrice} onChangeText={setPkgPrice} keyboardType="decimal-pad" />
-            <Text style={styles.hint}>Link services inside Provider catalog → Packages (API: PUT /packages/:id/items).</Text>
+            <Text style={styles.hint}>{t("orgOperations.bundleHint")}</Text>
             <TouchableOpacity style={[styles.cta, { backgroundColor: theme.accent }]} onPress={() => void submitPackage()}>
-              <Text style={styles.ctaTxt}>Save bundle</Text>
+              <Text style={styles.ctaTxt}>{t("orgOperations.saveBundle")}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
 
         {tab === "staff" ? (
           <View style={styles.card}>
-            <Text style={styles.label}>Full name</Text>
+            <Text style={styles.label}>{t("orgOperations.fullName")}</Text>
             <TextInput style={styles.input} value={staffName} onChangeText={setStaffName} />
-            <Text style={styles.label}>Work email</Text>
+            <Text style={styles.label}>{t("orgOperations.workEmail")}</Text>
             <TextInput style={styles.input} value={staffEmail} onChangeText={setStaffEmail} autoCapitalize="none" keyboardType="email-address" />
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t("orgOperations.password")}</Text>
             <TextInput style={styles.input} value={staffPass} onChangeText={setStaffPass} secureTextEntry />
-            <Text style={styles.label}>Role</Text>
-            <TextInput style={styles.input} value={staffRole} onChangeText={setStaffRole} placeholder="reception | groomer | owner" />
+            <Text style={styles.label}>{t("orgOperations.role")}</Text>
+            <TextInput style={styles.input} value={staffRole} onChangeText={setStaffRole} placeholder={t("orgOperations.rolePh")} />
             <TouchableOpacity style={[styles.cta, { backgroundColor: theme.accent }]} onPress={() => void submitStaff()}>
-              <Text style={styles.ctaTxt}>Create staff login</Text>
+              <Text style={styles.ctaTxt}>{t("orgOperations.createStaffLogin")}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
 
         {tab === "inv" ? (
           <View style={styles.card}>
-            <Text style={styles.label}>SKU (optional)</Text>
+            <Text style={styles.label}>{t("orgOperations.skuOptional")}</Text>
             <TextInput style={styles.input} value={sku} onChangeText={setSku} />
-            <Text style={styles.label}>Product name</Text>
+            <Text style={styles.label}>{t("orgOperations.productName")}</Text>
             <TextInput style={styles.input} value={invName} onChangeText={setInvName} />
-            <Text style={styles.label}>Quantity</Text>
+            <Text style={styles.label}>{t("orgOperations.quantity")}</Text>
             <TextInput style={styles.input} value={invQty} onChangeText={setInvQty} keyboardType="decimal-pad" />
             <TouchableOpacity style={[styles.cta, { backgroundColor: theme.accent }]} onPress={() => void submitInv()}>
-              <Text style={styles.ctaTxt}>Add stock line</Text>
+              <Text style={styles.ctaTxt}>{t("orgOperations.addStockLine")}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
 
         {tab === "bc" ? (
           <View style={styles.card}>
-            <Text style={styles.label}>Title</Text>
+            <Text style={styles.label}>{t("orgOperations.broadcastTitle")}</Text>
             <TextInput style={styles.input} value={bcTitle} onChangeText={setBcTitle} />
-            <Text style={styles.label}>Message</Text>
+            <Text style={styles.label}>{t("orgOperations.broadcastMessage")}</Text>
             <TextInput style={[styles.input, { minHeight: 100 }]} value={bcBody} onChangeText={setBcBody} multiline />
-            <Text style={styles.hint}>Delivers to customers who favorited you or booked before (if they allow org messages).</Text>
+            <Text style={styles.hint}>{t("orgOperations.broadcastHint")}</Text>
             <TouchableOpacity style={[styles.cta, { backgroundColor: theme.accent }]} onPress={() => void submitBc()}>
-              <Text style={styles.ctaTxt}>Send broadcast</Text>
+              <Text style={styles.ctaTxt}>{t("orgOperations.sendBroadcast")}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
 
         {tab === "wait" ? (
           <View style={styles.card}>
-            <Text style={styles.hint}>Customers who joined when a slot was full.</Text>
+            <Text style={styles.hint}>{t("orgOperations.waitlistHint")}</Text>
             {waitlist.length === 0 ? (
-              <Text style={styles.muted}>No open waitlist rows.</Text>
+              <Text style={styles.muted}>{t("orgOperations.waitlistEmpty")}</Text>
             ) : (
               waitlist.map((w) => (
                 <View key={String(w.id)} style={styles.wlRow}>
@@ -304,6 +306,7 @@ export default function OrgOperationsScreen() {
           </View>
         ) : null}
       </ScrollView>
+      </OrgScreenKeyboardAvoiding>
     </SafeAreaView>
   );
 }
@@ -317,7 +320,7 @@ const styles = StyleSheet.create({
   tabs: { flexWrap: "wrap", gap: 4, paddingHorizontal: 8, marginBottom: 8 },
   tab: { paddingHorizontal: 10, paddingVertical: 8 },
   tabTxt: { fontSize: 13, fontWeight: "700", color: "#64748b" },
-  scroll: { padding: 16, paddingBottom: 48 },
+  scroll: { padding: 16, paddingBottom: 120 },
   card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: "#e2e8f0" },
   label: { fontSize: 13, fontWeight: "700", color: "#334155", marginBottom: 6 },
   input: {

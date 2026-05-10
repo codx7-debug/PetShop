@@ -75,4 +75,25 @@ export async function initUserSchema() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_cards_user ON user_payment_cards (user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_tx_user ON user_transactions (user_id)`);
+  await pool.query(`ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(32)`).catch(() => {});
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS adoption_listings (
+      id SERIAL PRIMARY KEY,
+      owner_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      pet_name VARCHAR(120) NOT NULL,
+      species VARCHAR(80) NOT NULL,
+      breed VARCHAR(120),
+      age_label VARCHAR(80) NOT NULL,
+      description TEXT,
+      photo_url TEXT,
+      status VARCHAR(24) NOT NULL DEFAULT 'available',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_adoption_owner ON adoption_listings (owner_user_id)`);
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_adoption_status_created ON adoption_listings (status, created_at DESC)`
+  );
 }

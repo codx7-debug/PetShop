@@ -133,7 +133,7 @@ export default function ProfileNotificationsScreen() {
           />
         </View>
         <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-          <Text style={styles.rowTxt}>Booking SMS / WhatsApp reminders</Text>
+          <Text style={styles.rowTxt}>{t("profileNotifications.bookingReminders")}</Text>
           <Switch
             value={bookingOn}
             onValueChange={(v) =>
@@ -148,7 +148,7 @@ export default function ProfileNotificationsScreen() {
           />
         </View>
         <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-          <Text style={styles.rowTxt}>Messages from salons you follow</Text>
+          <Text style={styles.rowTxt}>{t("profileNotifications.followedOrgMessages")}</Text>
           <Switch
             value={broadcastOn}
             onValueChange={(v) =>

@@ -91,6 +91,9 @@ export async function register(req, res) {
     if (String(role || "").trim().toLowerCase() === "org_staff") {
       return res.status(400).json({ message: "Organization staff accounts are created by your organization admin." });
     }
+    if (["accounter", "admin"].includes(String(role || "").trim().toLowerCase())) {
+      return res.status(403).json({ message: "This account type cannot be self-registered." });
+    }
 
     const validationError = validateRegisterInput({ full_name, email, password, role: safeRole, org_name, org_contact });
     if (validationError) return res.status(400).json({ message: validationError });
@@ -216,6 +219,20 @@ export async function login(req, res) {
       return res.status(403).json({
         message: "This account has been disabled. Please contact support.",
         code: "ACCOUNT_DISABLED",
+      });
+    }
+
+    if (String(user.role || "").toLowerCase() === "accounter") {
+      const publicUser = shapePublicUser(user);
+      const token = jwt.sign(
+        { id: publicUser.id, role: "accounter", email: publicUser.email },
+        JWT_SECRET,
+        { expiresIn: "12h" }
+      );
+      return res.json({
+        token,
+        user: publicUser,
+        service_provider: false,
       });
     }
 

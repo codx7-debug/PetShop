@@ -84,6 +84,59 @@ export async function listPendingOrgRequests() {
   return rows;
 }
 
+export async function listUsersByRole(role) {
+  const { rows } = await pool.query(
+    `SELECT id, full_name, email, role, status, created_at FROM ${TABLE} WHERE role = $1 ORDER BY created_at DESC`,
+    [role]
+  );
+  return rows;
+}
+
+/** Escape `%`, `_`, `\` for use in ILIKE … ESCAPE '\\' */
+function escapeLikePattern(s) {
+  return String(s).replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+/**
+ * Narrow admin lookup: substring match on name, email, or organization name — never loads the full directory.
+ */
+export async function searchUsersForAdmin(rawQ, opts = {}) {
+  const limit = Math.min(50, Math.max(1, Number(opts.limit) || 25));
+  const excludeEmail = String(opts.excludeEmail || "")
+    .trim()
+    .toLowerCase();
+  const term = String(rawQ || "").trim();
+  if (term.length < 2) return [];
+  const pat = `%${escapeLikePattern(term)}%`;
+  const { rows } = await pool.query(
+    `SELECT id, full_name, email, role, status, org_name, org_contact, created_at
+     FROM ${TABLE}
+     WHERE LOWER(TRIM(role)) <> 'admin'
+       AND ($3::text = '' OR LOWER(TRIM(email)) <> $3::text)
+       AND (
+         full_name ILIKE $1 ESCAPE '\\'
+         OR email ILIKE $1 ESCAPE '\\'
+         OR COALESCE(org_name, '') ILIKE $1 ESCAPE '\\'
+       )
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [pat, limit, excludeEmail]
+  );
+  return rows;
+}
+
+export async function updateUserStatus(userId, status) {
+  const uid = Number(userId);
+  if (!Number.isFinite(uid) || uid <= 0) return null;
+  const st = String(status || "").trim().toLowerCase().slice(0, 20);
+  if (!["active", "disabled"].includes(st)) return null;
+  const { rows } = await pool.query(`UPDATE ${TABLE} SET status = $1 WHERE id = $2 RETURNING id, full_name, email, role, status`, [
+    st,
+    uid,
+  ]);
+  return rows[0] || null;
+}
+
 export async function setOrgRequestStatus(id, status) {
   const allowed = ["active", "rejected"];
   if (!allowed.includes(status)) return null;
@@ -94,5 +147,13 @@ export async function setOrgRequestStatus(id, status) {
      RETURNING id, full_name, email, role, status, org_name, org_contact, created_at`,
     [status, id]
   );
+  return rows[0] || null;
+}
+
+/** Hard delete (CASCADE cleans related rows). Use only for self-service pet-parent account removal. */
+export async function deleteUserById(userId) {
+  const uid = Number(userId);
+  if (!Number.isFinite(uid) || uid <= 0) return null;
+  const { rows } = await pool.query(`DELETE FROM ${TABLE} WHERE id = $1 RETURNING id`, [uid]);
   return rows[0] || null;
 }

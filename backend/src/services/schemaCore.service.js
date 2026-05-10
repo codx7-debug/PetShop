@@ -153,6 +153,19 @@ const STATEMENTS = [
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`,
   `CREATE INDEX IF NOT EXISTS idx_user_notifications ON user_notifications (user_id, created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS organization_offers (
+    id SERIAL PRIMARY KEY,
+    organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    title VARCHAR(300) NOT NULL,
+    description TEXT,
+    icon_emoji VARCHAR(16) NOT NULL DEFAULT '🎁',
+    valid_until DATE,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_org_offers_org ON organization_offers (organization_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_org_offers_public ON organization_offers (is_active, valid_until)`,
 ];
 
 export async function initCoreSchema() {

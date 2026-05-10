@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,112 +12,12 @@ import BottomNavBar from './bottomNavBar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { router } from 'expo-router';
 
-interface Hotel {
-  id: string;
-  name: string;
-  location: string;
-  pricePerNight: number;
-  description: string;
-  image: string;
-  amenities: string[];
-  rating: number;
-}
-
-// 5 static hotels
-const HOTELS: Hotel[] = [
-  {
-    id: '1',
-    name: 'Dream Pet Hotel',
-    location: 'Beşiktaş, İstanbul',
-    pricePerNight: 980,
-    description:
-      "Your pet's home away from home! Premium comfort, 24/7 care, and plenty of cuddles await your furry friend at Dream Pet Hotel. Spacious rooms, a playground, and attention to hygiene & diet.",
-    image:
-      'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=crop&w=750&q=80',
-    amenities: [
-      'Pet Grooming',
-      'Veterinary on Site',
-      'Daily Exercise',
-      'Play Yard',
-      'Spa & Massage',
-      '24/7 Supervision',
-      'Allergy-safe Foods',
-    ],
-    rating: 4.8,
-  },
-  {
-    id: '2',
-    name: 'Happy Paws Inn',
-    location: 'Kadıköy, İstanbul',
-    pricePerNight: 725,
-    description:
-      "A cozy getaway for pets! Indoor/outdoor play areas, nutritious meals, and a dedicated caring staff. Convenient location and safe, clean environment guaranteed.",
-    image:
-      'https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=750&q=80',
-    amenities: [
-      'Veterinary On Call',
-      'Large Play Area',
-      'Pet Taxi',
-      'Special Diets',
-    ],
-    rating: 4.5,
-  },
-  {
-    id: '3',
-    name: 'Royal Pet Resort',
-    location: 'Şişli, İstanbul',
-    pricePerNight: 1100,
-    description:
-      "Luxury experience for your pet! Individual suites, spa, grooming, and a play pool. Your pet will never want to leave Royal Pet Resort.",
-    image:
-      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=750&q=80',
-    amenities: [
-      'Luxury Suites',
-      'Pet Spa',
-      'Pool',
-      '24/7 Surveillance',
-      'Playground',
-    ],
-    rating: 4.9,
-  },
-  {
-    id: '4',
-    name: 'PetCare Hotel',
-    location: 'Ataşehir, İstanbul',
-    pricePerNight: 580,
-    description:
-      "Affordable comfort for pets. Attentive care, playtime, group and solo sleep options, regular vet checks.",
-    image:
-      'https://images.unsplash.com/photo-1494256997604-768d1f608cac?auto=format&fit=crop&w=750&q=80',
-    amenities: [
-      'Supervised Play',
-      'Regular Vet Checks',
-      'Flexible Pickup',
-    ],
-    rating: 4.3,
-  },
-  {
-    id: '5',
-    name: 'City Pet Suites',
-    location: 'Bakırköy, İstanbul',
-    pricePerNight: 880,
-    description:
-      "Modern pet suites with video monitoring, allergen-free rooms, play compounds, and nutritional plans tailored for every guest.",
-    image:
-      'https://images.unsplash.com/photo-1518715308788-3005759c61fc?auto=format&fit=crop&w=750&q=80',
-    amenities: [
-      'Video Monitoring',
-      'Allergy Free',
-      'Custom Nutrition',
-      'Training',
-    ],
-    rating: 4.6,
-  },
-];
+import { hotelsForLocale, type DemoHotel } from '../i18n/listingDemoCatalog';
 
 const HotelPage: React.FC = () => {
-  const { t } = useLanguage();
-  const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
+  const { t, locale } = useLanguage();
+  const [selectedHotel, setSelectedHotel] = useState<DemoHotel | null>(null);
+  const hotels = useMemo(() => hotelsForLocale(locale), [locale]);
 
   return (
     <View style={styles.container}>
@@ -190,7 +90,7 @@ const HotelPage: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.pageTitle}>{t('listingHotel.pageTitle')}</Text>
         <View style={styles.listContainer}>
-          {HOTELS.map(hotel => (
+          {hotels.map(hotel => (
             <TouchableOpacity
               key={hotel.id}
               style={styles.hotelCard}

@@ -123,7 +123,7 @@ export default function NotificationsScreen() {
           }
         >
           {rows.length === 0 ? (
-            <Text style={[styles.empty, ta]}>No messages yet. Booking reminders and salon updates appear here.</Text>
+            <Text style={[styles.empty, ta]}>{t("notifications.empty")}</Text>
           ) : (
             rows.map((row) => (
               <TouchableOpacity

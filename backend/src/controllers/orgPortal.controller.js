@@ -7,6 +7,7 @@ import * as packageService from "../services/servicePackage.service.js";
 import * as memberService from "../services/organizationMember.service.js";
 import * as inventoryService from "../services/orgInventory.service.js";
 import * as notifyHub from "../services/notificationHub.service.js";
+import * as orgOffersService from "../services/orgOffers.service.js";
 
 function ctxOrg(req) {
   return Number(req.organizationContext?.organizationId);
@@ -103,12 +104,18 @@ export async function listMyAppointments(req, res) {
   const staff =
     staffRaw === undefined || staffRaw === "" ? null : Number.parseInt(String(staffRaw), 10);
   try {
-    const rows = await appointmentService.listOrganizationAppointmentsDetailed({
+    let rows = await appointmentService.listOrganizationAppointmentsDetailed({
       fromIso: from,
       toIso: to,
       organizationId: oid,
       clinicStaffUserId: Number.isFinite(staff) ? staff : null,
     });
+    const statusFilter = String(req.query.status || "")
+      .trim()
+      .toLowerCase();
+    if (statusFilter) {
+      rows = rows.filter((r) => String(r.status || "").toLowerCase() === statusFilter);
+    }
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -321,5 +328,55 @@ export async function patchAppointmentNoShow(req, res) {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Could not update appointment." });
+  }
+}
+
+export async function listMyOffers(req, res) {
+  const oid = ctxOrg(req);
+  try {
+    const offers = await orgOffersService.listOffersForOrganization(oid);
+    res.json({ offers });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not load offers." });
+  }
+}
+
+export async function postMyOffer(req, res) {
+  if (!ownerOnly(req, res)) return;
+  const oid = ctxOrg(req);
+  try {
+    const row = await orgOffersService.createOffer(oid, req.body || {});
+    if (!row) return res.status(400).json({ error: "Title is required." });
+    res.status(201).json({ offer: row });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not create offer." });
+  }
+}
+
+export async function patchMyOffer(req, res) {
+  if (!ownerOnly(req, res)) return;
+  const oid = ctxOrg(req);
+  try {
+    const row = await orgOffersService.updateOffer(oid, req.params.id, req.body || {});
+    if (!row) return res.status(404).json({ error: "Offer not found." });
+    res.json({ offer: row });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not update offer." });
+  }
+}
+
+export async function deleteMyOffer(req, res) {
+  if (!ownerOnly(req, res)) return;
+  const oid = ctxOrg(req);
+  try {
+    const ok = await orgOffersService.deleteOffer(oid, req.params.id);
+    if (!ok) return res.status(404).json({ error: "Offer not found." });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not delete offer." });
   }
 }

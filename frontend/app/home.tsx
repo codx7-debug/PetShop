@@ -519,17 +519,51 @@ export default function HomeScreen() {
               ))}
             </ScrollView>
           </View>
-          <Text style={[styles.sectionTitle, { color: "#1EA9CF" }, ta]}>
-            {isRTL ? "حيوانات للتبني" : "Animals for Adoption"}
-          </Text>
+          <View
+            style={{
+              flexDirection: isRTL ? "row-reverse" : "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 8,
+              gap: 8,
+            }}
+          >
+            <Text style={[styles.sectionTitle, { color: "#1EA9CF", flex: 1 }, ta]}>
+              {t("adoptionIndex.pageTitle")}
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push("/adoption")}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: "#E3F6FC",
+                paddingHorizontal: 13,
+                paddingVertical: 6,
+                borderRadius: 99,
+                marginLeft: isRTL ? 0 : 8,
+                marginRight: isRTL ? 8 : 0,
+                borderWidth: 0,
+              }}
+            >
+              <Text style={{ color: "#1EA9CF", fontWeight: "700", fontSize: 13 }}>
+                {t("adoptionIndex.viewAll")}
+              </Text>
+              <Ionicons
+                name={isRTL ? "arrow-back-outline" : "arrow-forward-outline"}
+                size={16}
+                color="#1EA9CF"
+                style={{ marginLeft: isRTL ? 0 : 3, marginRight: isRTL ? 3 : 0 }}
+              />
+            </TouchableOpacity>
+          </View>
 
           <View style={[styles.caseCard, { backgroundColor: "#F8FAFC", borderColor: "#A0E5D6" }]}>
             <View style={[styles.caseTop, { flexDirection: isRTL ? "row-reverse" : "row", alignItems: "center" }]}>
               <Text style={[styles.urgentBadge, { backgroundColor: "#21E7D8", color: "#0A2239" }]}>
-                {isRTL ? "متوفر" : "Available"}
+                {t("homeAdoptionTeaser.available")}
               </Text>
               <Text style={[styles.distanceBadge, { backgroundColor: "#E2F6F9", color: "#0A2239" }]}>
-                {isRTL ? "ذكر" : "Male"}
+                {t("homeAdoptionTeaser.male")}
               </Text>
             </View>
             <View style={styles.pawArea}>
@@ -538,26 +572,24 @@ export default function HomeScreen() {
             <View style={[styles.caseBody, { backgroundColor: "#FCFFFD" }]}>
               <View style={[styles.caseHeader, { flexDirection: isRTL ? "row-reverse" : "row", alignItems: "center" }]}>
                 <Text style={[styles.caseTitle, { color: "#0A2239", marginRight: 10 }, ta]}>
-                  {isRTL ? "روكي" : "Rocky"}
+                  {t("homeAdoptionTeaser.rockyName")}
                 </Text>
                 <Text style={[styles.caseTime, { color: "#41A09D" }, ta]}>
-                  {isRTL ? "3 سنوات" : "3 years"}
+                  {t("homeAdoptionTeaser.rockyAge")}
                 </Text>
               </View>
               <Text style={[styles.caseDesc, { color: "#298475" }, ta]}>
-                {isRTL
-                  ? "كلب ودود نشيط، يحب اللعب ويحتاج إلى منزل محب"
-                  : "Friendly, energetic dog. Loves to play and looking for a loving home."}
+                {t("homeAdoptionTeaser.rockyDesc")}
               </Text>
               <View style={[styles.caseButtons, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
                 <TouchableOpacity style={[styles.helpBtn, { backgroundColor: "#21E7D8" }]}>
                   <Text style={[styles.helpBtnText, { color: "#0A2239" }]}>
-                    {isRTL ? "تقديم طلب تبني" : "Adopt"}
+                    {t("adoptionIndex.adoptCta")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.detailsBtn, { backgroundColor: "#fff", borderColor: "#B0E7F3" }]}>
                   <Text style={[styles.detailsBtnText, { color: "#1EA9CF" }]}>
-                    {isRTL ? "تفاصيل" : "Details"}
+                    {t("adoptionIndex.detailsCta")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -567,10 +599,10 @@ export default function HomeScreen() {
           <View style={[styles.caseCard, { backgroundColor: "#FFF8E2", borderColor: "#EBD59D" }]}>
             <View style={[styles.caseTop, { flexDirection: isRTL ? "row-reverse" : "row", alignItems: "center" }]}>
               <Text style={[styles.urgentBadge, { backgroundColor: "#EBD59D", color: "#7A541D" }]}>
-                {isRTL ? "متوفر" : "Available"}
+                {t("homeAdoptionTeaser.available")}
               </Text>
               <Text style={[styles.distanceBadge, { backgroundColor: "#FEF3E5", color: "#7A541D" }]}>
-                {isRTL ? "أنثى" : "Female"}
+                {t("homeAdoptionTeaser.female")}
               </Text>
             </View>
             <View style={styles.pawArea}>
@@ -579,31 +611,30 @@ export default function HomeScreen() {
             <View style={[styles.caseBody, { backgroundColor: "#FEFCF5" }]}>
               <View style={[styles.caseHeader, { flexDirection: isRTL ? "row-reverse" : "row", alignItems: "center" }]}>
                 <Text style={[styles.caseTitle, { color: "#7A541D", marginRight: 10 }, ta]}>
-                  {isRTL ? "بيلا" : "Bella"}
+                  {t("homeAdoptionTeaser.bellaName")}
                 </Text>
                 <Text style={[styles.caseTime, { color: "#C48E31" }, ta]}>
-                  {isRTL ? "سنة واحدة" : "1 year"}
+                  {t("homeAdoptionTeaser.bellaAge")}
                 </Text>
               </View>
               <Text style={[styles.caseDesc, { color: "#C2995A" }, ta]}>
-                {isRTL
-                  ? "قطة هادئة وحنونة تبحث عن منزل دافئ"
-                  : "Calm, affectionate cat looking for a warm family."}
+                {t("homeAdoptionTeaser.bellaDesc")}
               </Text>
               <View style={[styles.caseButtons, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
                 <TouchableOpacity style={[styles.helpBtn, { backgroundColor: "#EBD59D" }]}>
                   <Text style={[styles.helpBtnText, { color: "#7A541D" }]}>
-                    {isRTL ? "تقديم طلب تبني" : "Adopt"}
+                    {t("adoptionIndex.adoptCta")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.detailsBtn, { backgroundColor: "#fff", borderColor: "#EBD59D" }]}>
                   <Text style={[styles.detailsBtnText, { color: "#7A541D" }]}>
-                    {isRTL ? "تفاصيل" : "Details"}
+                    {t("adoptionIndex.detailsCta")}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
+    
      
         </ScrollView>
         <BottomNavBar />

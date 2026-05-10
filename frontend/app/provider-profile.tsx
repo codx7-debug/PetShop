@@ -217,7 +217,7 @@ export default function ProviderProfileScreen() {
     try {
       const tok = await AsyncStorage.getItem("token");
       if (!tok || !orgId) {
-        Alert.alert("", "Sign in to save favorites.");
+        Alert.alert("", t("providerProfile.signInToFavorite"));
         return;
       }
       if (favorited) {
@@ -235,7 +235,7 @@ export default function ProviderProfileScreen() {
         if (res.ok) setFavorited(true);
       }
     } catch {
-      Alert.alert("", "Could not update favorite.");
+      Alert.alert("", t("providerProfile.favoriteUpdateFail"));
     }
   };
 
@@ -243,7 +243,7 @@ export default function ProviderProfileScreen() {
     try {
       const tok = await AsyncStorage.getItem("token");
       if (!tok) {
-        Alert.alert("", "Sign in to leave a review.");
+        Alert.alert("", t("providerProfile.signInToReview"));
         return;
       }
       setReviewBusy(true);
@@ -258,7 +258,7 @@ export default function ProviderProfileScreen() {
       await load(false);
       await loadReviews();
     } catch {
-      Alert.alert("", "Could not submit review.");
+      Alert.alert("", t("providerProfile.reviewSubmitFail"));
     } finally {
       setReviewBusy(false);
     }
@@ -372,10 +372,10 @@ export default function ProviderProfileScreen() {
                 )}
               </View>
 
-              <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left", marginTop: 22 }]}>Reviews</Text>
+              <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left", marginTop: 22 }]}>{t("providerProfile.reviews")}</Text>
               <View style={[styles.card, { borderLeftColor: theme.accent }]}>
                 {reviews.length === 0 ? (
-                  <Text style={[styles.muted, { textAlign: isRTL ? "right" : "left" }]}>No written reviews yet.</Text>
+                  <Text style={[styles.muted, { textAlign: isRTL ? "right" : "left" }]}>{t("providerProfile.noWrittenReviews")}</Text>
                 ) : (
                   reviews.map((r) => (
                     <View key={r.id} style={{ marginBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#e2e8f0", paddingBottom: 10 }}>
@@ -389,7 +389,7 @@ export default function ProviderProfileScreen() {
                     </View>
                   ))
                 )}
-                <Text style={[styles.muted, { marginTop: 8, marginBottom: 6 }]}>Your review (one per account)</Text>
+                <Text style={[styles.muted, { marginTop: 8, marginBottom: 6 }]}>{t("providerProfile.yourReviewHint")}</Text>
                 <View style={{ flexDirection: rowDir, gap: 8, marginBottom: 8 }}>
                   {[1, 2, 3, 4, 5].map((n) => (
                     <TouchableOpacity key={n} onPress={() => setReviewStars(n)}>
@@ -399,7 +399,7 @@ export default function ProviderProfileScreen() {
                 </View>
                 <TextInput
                   style={styles.reviewInput}
-                  placeholder="Share your experience…"
+                  placeholder={t("providerProfile.reviewPlaceholder")}
                   placeholderTextColor="#94a3b8"
                   value={reviewText}
                   onChangeText={setReviewText}
@@ -410,7 +410,9 @@ export default function ProviderProfileScreen() {
                   onPress={() => void submitReview()}
                   disabled={reviewBusy}
                 >
-                  <Text style={[styles.mapsBtnTxt, { color: "#fff" }]}>{reviewBusy ? "Sending…" : "Post review"}</Text>
+                  <Text style={[styles.mapsBtnTxt, { color: "#fff" }]}>
+                    {reviewBusy ? t("providerProfile.sendingReview") : t("providerProfile.postReview")}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -468,7 +470,7 @@ export default function ProviderProfileScreen() {
 
               {packages.length > 0 ? (
                 <>
-                  <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left", marginTop: 26 }]}>Bundles</Text>
+                  <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left", marginTop: 26 }]}>{t("providerProfile.bundles")}</Text>
                   {packages.map((p) => (
                     <TouchableOpacity
                       key={`pkg-${p.id}`}

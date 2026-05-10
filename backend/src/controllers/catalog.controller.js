@@ -2,6 +2,7 @@ import * as orgService from "../services/organization.service.js";
 import * as catalogService from "../services/serviceCatalog.service.js";
 import * as packageService from "../services/servicePackage.service.js";
 import * as discoveryService from "../services/discovery.service.js";
+import * as orgOffersService from "../services/orgOffers.service.js";
 
 function parseGallery(org) {
   if (!org?.gallery_json) return [];
@@ -157,5 +158,16 @@ export async function createOrgReview(req, res) {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Could not save review." });
+  }
+}
+
+/** Public list for the in-app Offers / Campaigns screen. */
+export async function listPublicOffers(req, res) {
+  try {
+    const offers = await orgOffersService.listPublicActiveOffers();
+    res.json({ offers });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not load offers." });
   }
 }

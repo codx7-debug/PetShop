@@ -9,6 +9,7 @@ import catalogRoutes from "./routes/catalog.routes.js";
 import reportApiRoutes from "./routes/reportApi.routes.js";
 import orgPortalRoutes from "./routes/orgPortal.routes.js";
 import userPortalRoutes from "./routes/userPortal.routes.js";
+import accounterPortalRoutes from "./routes/accounterPortal.routes.js";
 
 const app = express();
 
@@ -32,5 +33,6 @@ app.use("/api", reportApiRoutes);
 app.use("/api/org", orgPortalRoutes);
 app.use("/api/auth", authApiRoutes);
 app.use("/api/admin", adminApiRoutes);
+app.use("/api/accounter", accounterPortalRoutes);
 
 export default app;

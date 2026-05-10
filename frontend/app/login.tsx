@@ -9,8 +9,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clearUserSession } from '../lib/session';
 import { useLanguage } from '../contexts/LanguageContext';
-import type { AppLocale } from '../i18n/translations';
-import { SUPPORTED_LOCALES, LOCALE_NAMES } from '../i18n/translations';
+import { LanguageShortcutsBar } from '../components/LanguageShortcutsBar';
 
 const { width } = Dimensions.get('window');
 
@@ -62,8 +61,10 @@ export default function AuthScreen() {
     return null;
   };
 
+  // Added phone number validation for user registration
   const validateUserRegister = (): string | null => {
     if (!fullName.trim()) return t('login.errFullName');
+    if (!phone.trim()) return t('login.errPhoneRequired');
     if (!email.trim()) return t('login.errEmailRequired');
     if (!/\S+@\S+\.\S+/.test(email)) return t('login.errEmailInvalid');
     if (!password) return t('login.errPasswordRequired');
@@ -154,9 +155,11 @@ export default function AuthScreen() {
       } finally {
         setLoading(false);
       }
+      return;
     }
   };
 
+  // no longer used directly; kept for org registration or future fallback
   const handleRegisterUser = async () => {
     const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
@@ -166,6 +169,7 @@ export default function AuthScreen() {
         password,
         role: 'user',
         full_name: fullName.trim(),
+        phone: phone.trim(),
       }),
     });
     const data = (await response.json().catch(() => ({}))) as { message?: string };
@@ -213,6 +217,10 @@ export default function AuthScreen() {
 
     if (role === "admin") {
       router.replace({ pathname: "/admin-dashboard" });
+      return;
+    }
+    if (role === "accounter") {
+      router.replace({ pathname: "/accounter" });
       return;
     }
     if (isOrgAccount) {
@@ -280,7 +288,7 @@ export default function AuthScreen() {
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.brandName}>Petora</Text>
+            <Text style={styles.brandName}>{t("login.appBrand")}</Text>
             <Text style={styles.tagline}>{t('login.tagline')}</Text>
           </View>
 
@@ -291,27 +299,12 @@ export default function AuthScreen() {
             <Text style={[styles.languageSub, isRTL ? { textAlign: 'right' as const } : {}]}>
               {t('login.languageChooserSub')}
             </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={[styles.langScroll, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-            >
-              {(SUPPORTED_LOCALES as readonly AppLocale[]).map((code) => {
-                const active = locale === code;
-                return (
-                  <TouchableOpacity
-                    key={code}
-                    style={[styles.langChip, active && styles.langChipActive]}
-                    onPress={() => void setLocale(code)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.langChipText, active && styles.langChipTextActive]}>
-                      {LOCALE_NAMES[code]}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <LanguageShortcutsBar
+              variant="login"
+              locale={locale}
+              onSelect={setLocale}
+              isRTL={isRTL}
+            />
           </View>
 
           <View style={styles.accountPicker}>
@@ -358,16 +351,29 @@ export default function AuthScreen() {
             {(userType === 'org' || userType === 'user') && (
               <View style={styles.inputWrapper}>
                 {userType === 'user' && !isLogin && (
-                  <View style={styles.inputContainer}>
-                    <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
-                    <TextInput
-                      placeholder={t('login.phFullName')}
-                      style={styles.input}
-                      value={fullName}
-                      onChangeText={setFullName}
-                      placeholderTextColor="#9EB2C9"
-                    />
-                  </View>
+                  <>
+                    <View style={styles.inputContainer}>
+                      <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
+                      <TextInput
+                        placeholder={t('login.phFullName')}
+                        style={styles.input}
+                        value={fullName}
+                        onChangeText={setFullName}
+                        placeholderTextColor="#9EB2C9"
+                      />
+                    </View>
+                    <View style={styles.inputContainer}>
+                      <Ionicons name="call-outline" size={20} color="#666" style={styles.icon} />
+                      <TextInput
+                        placeholder={t('login.phPhone')}
+                        style={styles.input}
+                        value={phone}
+                        onChangeText={setPhone}
+                        keyboardType="phone-pad"
+                        placeholderTextColor="#9EB2C9"
+                      />
+                    </View>
+                  </>
                 )}
                 {userType === 'org' && isLogin && (
                   <>
@@ -621,8 +627,11 @@ const styles = StyleSheet.create({
 
   languageBlock: {
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 100,
+    marginLeft:10,
     paddingHorizontal: 2,
+    gap: 10,
+    height:80
   },
   languageTitle: {
     fontSize: 15,
@@ -638,32 +647,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     maxWidth: '100%',
   },
-  langScroll: {
-    gap: 8,
-    paddingVertical: 2,
-    alignItems: 'center',
-  },
-  langChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: '#cfe8de',
-    backgroundColor: '#fff',
-  },
-  langChipActive: {
-    borderColor: '#2B9B7A',
-    backgroundColor: '#2B9B7A',
-  },
-  langChipText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#247059',
-  },
-  langChipTextActive: {
-    color: '#fff',
-  },
-
   accountPicker: {
     width: '100%',
     marginBottom: 22,

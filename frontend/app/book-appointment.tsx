@@ -120,9 +120,9 @@ export default function BookAppointmentScreen() {
       });
       const data = (await res.json()) as { error?: string; waitlist?: unknown };
       if (!res.ok) throw new Error(data.error || res.statusText);
-      Alert.alert("", "You’re on the waitlist. We’ll notify you in the app when a slot opens.");
+      Alert.alert("", t("bookAppointment.waitlistJoined"));
     } catch (e) {
-      Alert.alert("", e instanceof Error ? e.message : "—");
+      Alert.alert("", e instanceof Error ? e.message : t("common.emDash"));
     }
   };
 
@@ -184,20 +184,20 @@ export default function BookAppointmentScreen() {
         appointments?: unknown[];
       };
       if (res.status === 409 && data.code === "SLOT_UNAVAILABLE") {
-        Alert.alert("Slot busy", "This time is unavailable. Join the waitlist?", [
-          { text: "No", style: "cancel" },
-          { text: "Join waitlist", onPress: () => void joinWaitlist() },
+        Alert.alert(t("bookAppointment.slotBusyTitle"), t("bookAppointment.slotBusyBody"), [
+          { text: t("bookAppointment.no"), style: "cancel" },
+          { text: t("bookAppointment.joinWaitlist"), onPress: () => void joinWaitlist() },
         ]);
         return;
       }
       if (!res.ok) throw new Error(data.error || res.statusText);
       const msg =
         data.recurring && Array.isArray(data.appointments) && data.appointments.length > 1
-          ? `${data.appointments.length} bookings created (weekly series).`
+          ? t("bookAppointment.weeklyCreated", { count: data.appointments.length })
           : t("bookAppointment.successBody");
-      Alert.alert(t("bookAppointment.successTitle"), msg, [{ text: "OK", onPress: () => router.back() }]);
+      Alert.alert(t("bookAppointment.successTitle"), msg, [{ text: t("bookAppointment.ok"), onPress: () => router.back() }]);
     } catch (e) {
-      Alert.alert(t("bookAppointment.failTitle"), e instanceof Error ? e.message : "—");
+      Alert.alert(t("bookAppointment.failTitle"), e instanceof Error ? e.message : t("common.emDash"));
     } finally {
       setSubmitting(false);
     }
@@ -268,8 +268,8 @@ export default function BookAppointmentScreen() {
           <Text style={styles.timeTap}>{t("bookAppointment.tapAdvanceDay")}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.label}>Repeat weekly ({weeklyCount}x)</Text>
-        <Text style={styles.hint}>1 = single visit only. Increase for a recurring series.</Text>
+        <Text style={styles.label}>{t("bookAppointment.repeatWeekly", { count: weeklyCount })}</Text>
+        <Text style={styles.hint}>{t("bookAppointment.repeatWeeklyHint")}</Text>
         <View style={{ flexDirection: rowDir, flexWrap: "wrap", gap: 8, marginTop: 10 }}>
           {[1, 2, 4, 8].map((n) => (
             <TouchableOpacity
@@ -282,13 +282,13 @@ export default function BookAppointmentScreen() {
           ))}
         </View>
 
-        <Text style={styles.label}>Deposit (TRY, optional)</Text>
-        <Text style={styles.hint}>If your provider collects a prepaid hold, enter amount here (informational).</Text>
+        <Text style={styles.label}>{t("bookAppointment.depositLabel")}</Text>
+        <Text style={styles.hint}>{t("bookAppointment.depositHint")}</Text>
         <TouchableOpacity style={styles.timeBtn} activeOpacity={0.9}>
           <TextInput
             style={{ fontSize: 16, fontWeight: "600", color: "#0f172a" }}
             keyboardType="decimal-pad"
-            placeholder="0"
+            placeholder={t("bookAppointment.depositPlaceholder")}
             value={depositTry}
             onChangeText={setDepositTry}
           />

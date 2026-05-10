@@ -111,24 +111,27 @@ export default function BrowseServicesScreen() {
   const categoryLock = useMemo(() => normalizeOrgType(params.orgType), [params.orgType]);
   const effectiveFilter = categoryLock ?? freeFilter;
 
-  const load = useCallback(async (fromPull?: boolean) => {
-    setErr("");
-    if (fromPull) setRefreshing(true);
-    else setLoading(true);
-    try {
-      const q = effectiveFilter ? `?orgType=${encodeURIComponent(effectiveFilter)}` : "";
-      const res = await fetch(`${API_BASE_URL}/api/organizations${q}`);
-      const data = (await res.json()) as { organizations?: OrgRow[]; error?: string };
-      if (!res.ok) throw new Error(data.error || res.statusText);
-      setOrgs(data.organizations || []);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Error");
-      setOrgs([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [effectiveFilter]);
+  const load = useCallback(
+    async (fromPull?: boolean) => {
+      setErr("");
+      if (fromPull) setRefreshing(true);
+      else setLoading(true);
+      try {
+        const q = effectiveFilter ? `?orgType=${encodeURIComponent(effectiveFilter)}` : "";
+        const res = await fetch(`${API_BASE_URL}/api/organizations${q}`);
+        const data = (await res.json()) as { organizations?: OrgRow[]; error?: string };
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        setOrgs(data.organizations || []);
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : t("login.errGeneric"));
+        setOrgs([]);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [effectiveFilter, t]
+  );
 
   React.useEffect(() => {
     void load(false);
@@ -260,7 +263,7 @@ export default function BrowseServicesScreen() {
         <View style={{ marginBottom: 12 }}>
           {catalogFavs.length > 0 ? (
             <View style={{ marginBottom: 10 }}>
-              <Text style={[styles.subListTitle, { textAlign: isRTL ? "right" : "left" }]}>Favorites</Text>
+              <Text style={[styles.subListTitle, { textAlign: isRTL ? "right" : "left" }]}>{t("browseServices.favorites")}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catMiniRow}>
                 {catalogFavs.map((o) => (
                   <TouchableOpacity
@@ -281,7 +284,7 @@ export default function BrowseServicesScreen() {
           ) : null}
           {catalogRecent.length > 0 ? (
             <View>
-              <Text style={[styles.subListTitle, { textAlign: isRTL ? "right" : "left" }]}>Recently viewed</Text>
+              <Text style={[styles.subListTitle, { textAlign: isRTL ? "right" : "left" }]}>{t("browseServices.recentlyViewed")}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catMiniRow}>
                 {catalogRecent.map((o) => (
                   <TouchableOpacity
@@ -365,7 +368,7 @@ export default function BrowseServicesScreen() {
                       {item.display_name}
                     </Text>
                     <Text style={[styles.cardMeta, { textAlign: isRTL ? "right" : "left" }]}>
-                      {[item.city, item.country].filter(Boolean).join(" · ") || "—"}
+                      {[item.city, item.country].filter(Boolean).join(" · ") || t("common.emDash")}
                     </Text>
                     {item.description ? (
                       <Text

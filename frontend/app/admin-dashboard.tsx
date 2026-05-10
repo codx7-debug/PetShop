@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../contexts/LanguageContext";
+import { LanguageShortcutsBar } from "../components/LanguageShortcutsBar";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -64,7 +65,7 @@ function formatDate(iso: string) {
 }
 
 export default function AdminDashboardScreen() {
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, locale, setLocale } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actingId, setActingId] = useState<number | null>(null);
@@ -163,51 +164,157 @@ export default function AdminDashboardScreen() {
       />
 
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        <View style={[styles.topBar, { flexDirection: rowDir }]}>
-          <View style={[styles.brandBlock, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+        <View style={[styles.heroRow, { flexDirection: rowDir }]}>
+          <View style={[styles.heroBrand, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
             <View style={[styles.badgeRow, { flexDirection: rowDir }]}>
               <View style={styles.shieldIcon}>
                 <Ionicons name="shield-checkmark" size={18} color="#fff" />
               </View>
-              <Text style={styles.kicker}>PETORA</Text>
+              <Text style={styles.kicker} numberOfLines={2}>
+                {t("adminDashboard.brandBadge")}
+              </Text>
             </View>
-            <Text style={styles.heroTitle}>{t("adminDashboard.title")}</Text>
-            <Text style={styles.heroSub}>{t("adminDashboard.subtitle")}</Text>
+            <Text
+              style={styles.heroTitle}
+              numberOfLines={3}
+              adjustsFontSizeToFit
+              minimumFontScale={0.78}
+            >
+              {t("adminDashboard.title")}
+            </Text>
+            <Text
+              style={[styles.heroSub, { textAlign: isRTL ? "right" : "left" }]}
+              numberOfLines={4}
+              adjustsFontSizeToFit
+              minimumFontScale={0.82}
+            >
+              {t("adminDashboard.subtitle")}
+            </Text>
           </View>
           <TouchableOpacity
             onPress={() => void signOut()}
             style={styles.signOutPill}
             activeOpacity={0.85}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={styles.signOutText}>{t("adminDashboard.signOut")}</Text>
+            <Text
+              style={styles.signOutText}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              {t("adminDashboard.signOut")}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.statCard, { flexDirection: rowDir }]}>
-          <View style={[styles.statIconWrap, { marginRight: isRTL ? 0 : 12, marginLeft: isRTL ? 12 : 0 }]}>
-            <Ionicons name="hourglass-outline" size={26} color={C.mint} />
+        <View style={styles.contentSheet}>
+          <View style={styles.langSection}>
+            <Text style={[styles.langShortcutLabel, { textAlign: isRTL ? "right" : "left" }]}>
+              {t("settings.languageTitle")}
+            </Text>
+            <LanguageShortcutsBar variant="surface" locale={locale} onSelect={setLocale} isRTL={isRTL} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.statLabel}>{t("adminDashboard.countLabel", { count })}</Text>
-            <Text style={styles.statHint}>{t("adminDashboard.refresh")}</Text>
-          </View>
-        </View>
 
-        {loading ? (
-          <View style={styles.loaderWrap}>
-            <View style={styles.loaderCard}>
-              <ActivityIndicator size="large" color={C.mint} />
+          <View style={[styles.statCard, { flexDirection: rowDir }]}>
+            <View
+              style={[
+                styles.statIconWrap,
+                { marginEnd: isRTL ? 0 : 12, marginStart: isRTL ? 12 : 0 },
+              ]}
+            >
+              <Ionicons name="hourglass-outline" size={26} color={C.mint} />
+            </View>
+            <View style={styles.statTextBlock}>
+              <Text style={[styles.statLabel, { textAlign: isRTL ? "right" : "left" }]}>
+                {t("adminDashboard.countLabel", { count })}
+              </Text>
+              <Text style={[styles.statHint, { textAlign: isRTL ? "right" : "left" }]}>
+                {t("adminDashboard.refresh")}
+              </Text>
             </View>
           </View>
-        ) : (
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.mint} colors={[C.mint]} />
-            }
-          >
+
+          <View style={styles.adminShortcuts}>
+            <TouchableOpacity
+              style={styles.shortcutBtn}
+              onPress={() => router.push("/admin-accounts")}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={["#0f172a", "#334155"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.shortcutGrad, { flexDirection: rowDir }]}
+              >
+                <Ionicons name="people-circle-outline" size={22} color="#fff" />
+                <Text
+                  style={[styles.shortcutText, { textAlign: isRTL ? "right" : "left" }]}
+                  numberOfLines={2}
+                >
+                  {t("adminDashboard.lookupAccounts")}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.shortcutBtn}
+              onPress={() => router.push("/accounter")}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={["#0f766e", "#0d9488"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.shortcutGrad, { flexDirection: rowDir }]}
+              >
+                <Ionicons name="calculator-outline" size={22} color="#fff" />
+                <Text
+                style={[styles.shortcutText, { textAlign: isRTL ? "right" : "left" }]}
+                numberOfLines={2}
+              >
+                  {t("adminDashboard.openAccountant")}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.shortcutBtn}
+              onPress={() => router.push("/admin-accounter-users")}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={[C.tealDeep, "#0a5560"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.shortcutGrad, { flexDirection: rowDir }]}
+              >
+                <Ionicons name="people-outline" size={22} color="#fff" />
+                <Text
+                  style={[styles.shortcutText, { textAlign: isRTL ? "right" : "left" }]}
+                  numberOfLines={2}
+                >
+                  {t("adminDashboard.manageAccountants")}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <View style={styles.loaderWrap}>
+              <View style={styles.loaderCard}>
+                <ActivityIndicator size="large" color={C.mint} />
+                <Text style={styles.loaderHint}>{t("adminDashboard.refresh")}</Text>
+              </View>
+            </View>
+          ) : (
+            <ScrollView
+              style={styles.scrollFlex}
+              contentContainerStyle={styles.scroll}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.mint} colors={[C.mint]} />
+              }
+            >
             {error ? (
               <View style={[styles.errorBanner, { flexDirection: rowDir }]}>
                 <Ionicons name="warning-outline" size={22} color={C.danger} />
@@ -283,9 +390,10 @@ export default function AdminDashboardScreen() {
                 <Text style={styles.emptySub}>{t("adminDashboard.emptySub")}</Text>
               </View>
             ) : null}
-            <View style={{ height: 32 }} />
-          </ScrollView>
-        )}
+              <View style={styles.scrollBottomPad} />
+            </ScrollView>
+          )}
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -295,19 +403,41 @@ const styles = StyleSheet.create({
   shell: { flex: 1, backgroundColor: C.cream },
   gradientBg: {
     ...StyleSheet.absoluteFillObject,
-    height: 220,
-    opacity: 0.95,
+    height: 200,
+    opacity: 0.96,
   },
   safe: { flex: 1 },
-  topBar: {
+  heroRow: {
+    flexShrink: 0,
     paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 16,
+    paddingTop: 6,
+    paddingBottom: 20,
     alignItems: "flex-start",
     justifyContent: "space-between",
+    gap: 12,
   },
-  brandBlock: { flex: 1, paddingRight: 8 },
-  badgeRow: { alignItems: "center", gap: 8, marginBottom: 8 },
+  heroBrand: { flex: 1, minWidth: 0, flexShrink: 1, paddingEnd: 8 },
+  contentSheet: {
+    flex: 1,
+    marginTop: -12,
+    backgroundColor: C.cream,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingTop: 18,
+    paddingHorizontal: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#0f172a",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+      },
+      android: { elevation: 4 },
+      default: {},
+    }),
+  },
+  langSection: { marginBottom: 16 },
+  badgeRow: { alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8, maxWidth: "100%" },
   shieldIcon: {
     width: 32,
     height: 32,
@@ -319,8 +449,10 @@ const styles = StyleSheet.create({
   kicker: {
     fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 2,
+    letterSpacing: 1.2,
     color: "rgba(255,255,255,0.85)",
+    flexShrink: 1,
+    maxWidth: "100%",
   },
   heroTitle: {
     fontSize: 26,
@@ -328,17 +460,31 @@ const styles = StyleSheet.create({
     color: "#fff",
     letterSpacing: -0.5,
     marginBottom: 6,
+    flexShrink: 1,
+    width: "100%",
   },
   heroSub: {
     fontSize: 14,
     color: "rgba(255,255,255,0.88)",
     lineHeight: 20,
-    maxWidth: 280,
+    maxWidth: "100%",
+    flexShrink: 1,
+    width: "100%",
+  },
+  langShortcutLabel: {
+    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    color: C.muted,
+    textTransform: "uppercase",
   },
   signOutPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    flexShrink: 0,
+    alignSelf: "flex-start",
     backgroundColor: "rgba(0,0,0,0.18)",
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -346,22 +492,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
   },
-  signOutText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  signOutText: { color: "#fff", fontWeight: "700", fontSize: 13, flexShrink: 1, minWidth: 0 },
   statCard: {
-    marginHorizontal: 16,
-    marginTop: -8,
     marginBottom: 12,
     backgroundColor: C.card,
     borderRadius: 16,
     padding: 16,
     alignItems: "center",
     shadowColor: "#036672",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
+    borderColor: C.line,
   },
   statIconWrap: {
     width: 52,
@@ -371,20 +515,57 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  statTextBlock: { flex: 1, minWidth: 0, justifyContent: "center" },
   statLabel: { fontSize: 17, fontWeight: "800", color: C.ink },
   statHint: { fontSize: 12, color: C.muted, marginTop: 4 },
-  loaderWrap: { flex: 1, justifyContent: "center", paddingHorizontal: 24 },
+  adminShortcuts: {
+    marginBottom: 14,
+    gap: 10,
+  },
+  shortcutBtn: {
+    width: "100%",
+    borderRadius: 14,
+    overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+  },
+  shortcutGrad: {
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    minHeight: 52,
+  },
+  shortcutText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 14,
+    flex: 1,
+    flexShrink: 1,
+    lineHeight: 20,
+  },
+  loaderWrap: { flexGrow: 1, minHeight: 220, justifyContent: "center", paddingVertical: 24 },
   loaderCard: {
     backgroundColor: C.card,
     borderRadius: 20,
-    padding: 36,
+    paddingVertical: 32,
+    paddingHorizontal: 28,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: C.line,
     shadowColor: "#000",
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.04,
     shadowRadius: 12,
-    elevation: 3,
+    elevation: 2,
   },
-  scroll: { paddingHorizontal: 16, paddingTop: 4 },
+  loaderHint: { marginTop: 14, fontSize: 13, color: C.muted, fontWeight: "600" },
+  scrollFlex: { flex: 1 },
+  scroll: { paddingTop: 2, paddingBottom: 8, flexGrow: 1 },
+  scrollBottomPad: { height: 28 },
   errorBanner: {
     alignItems: "center",
     gap: 10,

@@ -17,6 +17,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useLanguage } from "../contexts/LanguageContext";
 import { API_BASE_URL, getAuthHeaders } from "../lib/api";
 import { getProviderDashboardTheme } from "../components/org/providerDashboardTheme";
+import { LanguageShortcutsBar } from "../components/LanguageShortcutsBar";
+import type { AppLocale } from "../i18n/translations";
 
 type StoredUser = {
   id?: number;
@@ -64,7 +66,7 @@ function heroSubKey(orgType: string) {
 }
 
 export default function OrgDashboardScreen() {
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, locale, setLocale } = useLanguage();
   const [orgName, setOrgName] = useState("");
   const [email, setEmail] = useState("");
   const [orgType, setOrgType] = useState<string>("vet");
@@ -72,9 +74,20 @@ export default function OrgDashboardScreen() {
   const [bookingCount, setBookingCount] = useState<number | null>(null);
   const [listedServiceCount, setListedServiceCount] = useState<number | null>(null);
   const [upcoming, setUpcoming] = useState<UpcomingAppt[]>([]);
+  const [changingLocale, setChangingLocale] = useState(false);
   const rowDir = isRTL ? "row-reverse" : "row";
 
   const theme = useMemo(() => getProviderDashboardTheme(orgType), [orgType]);
+
+  const onChangeLocale = async (next: AppLocale) => {
+    if (next === locale) return;
+    setChangingLocale(true);
+    try {
+      await setLocale(next);
+    } finally {
+      setChangingLocale(false);
+    }
+  };
 
   const persistUserPatch = async (partial: Partial<StoredUser>) => {
     try {
@@ -228,14 +241,23 @@ export default function OrgDashboardScreen() {
         <View style={[styles.topRow, { flexDirection: rowDir }]}>
           <View style={styles.heroTextCol}>
             <View style={[styles.kickerChip, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-              <Ionicons name={theme.icon} size={16} color="#fff" />
+              <Ionicons name={theme.icon as any} size={16} color="#fff" />
               <Text style={styles.kickerTxt}>{t(theme.kickerKey)}</Text>
             </View>
-            <Text style={styles.orgTitle}>{orgName || t("orgDashboard.fallbackName")}</Text>
-            <Text style={styles.heroSub} numberOfLines={3}>
+            <Text
+              style={styles.orgTitle}
+              numberOfLines={3}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
+              {orgName || t("orgDashboard.fallbackName")}
+            </Text>
+            <Text style={styles.heroSub} numberOfLines={4} adjustsFontSizeToFit minimumFontScale={0.82}>
               {t(heroSubKey(orgType))}
             </Text>
-            <Text style={styles.sheetTag}>{t("orgDash.sheetTagline")}</Text>
+            <Text style={styles.sheetTag} numberOfLines={3}>
+              {t("orgDash.sheetTagline")}
+            </Text>
             {email ? (
               <Text style={styles.email} numberOfLines={1}>
                 {email}
@@ -257,6 +279,23 @@ export default function OrgDashboardScreen() {
               <View style={styles.handle} />
             </View>
 
+            <View style={styles.langBlock}>
+              <Text style={[styles.langSectionTitle, { textAlign: isRTL ? "right" : "left" }]}>
+                {t("orgProfileSettings.languageSection")}
+              </Text>
+              <Text style={[styles.langHint, { textAlign: isRTL ? "right" : "left" }]}>
+                {t("orgProfileSettings.languageHint")}
+              </Text>
+              <LanguageShortcutsBar
+                variant="accent"
+                locale={locale}
+                onSelect={onChangeLocale}
+                isRTL={isRTL}
+                disabled={changingLocale}
+                accentColor={theme.accent}
+              />
+            </View>
+
             {listedServiceCount != null ? (
               <TouchableOpacity
                 style={[styles.servicesBanner, { flexDirection: rowDir }]}
@@ -267,7 +306,10 @@ export default function OrgDashboardScreen() {
                   <Ionicons name="pricetag-outline" size={20} color={theme.accent} />
                 </View>
                 <View style={styles.servicesBannerTextWrap}>
-                  <Text style={[styles.servicesBannerTitle, { textAlign: isRTL ? "right" : "left" }]}>
+                  <Text
+                    style={[styles.servicesBannerTitle, { textAlign: isRTL ? "right" : "left" }]}
+                    numberOfLines={3}
+                  >
                     {listedServiceCount === 0
                       ? t("orgDash.activeServicesNone")
                       : t("orgDash.activeServices", { count: listedServiceCount })}
@@ -322,7 +364,12 @@ export default function OrgDashboardScreen() {
                     />
                   </TouchableOpacity>
                 </View>
-                <Text style={[styles.statSideSub, { textAlign: isRTL ? "right" : "left" }]}>
+                <Text
+                  style={[styles.statSideSub, { textAlign: isRTL ? "right" : "left" }]}
+                  numberOfLines={4}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}
+                >
                   {t("orgDashboard.scheduleDesc")}
                 </Text>
               </View>
@@ -330,7 +377,12 @@ export default function OrgDashboardScreen() {
 
           <View style={[styles.sectionHead, { flexDirection: rowDir }]}>
             <View style={[styles.sectionAccentBar, { backgroundColor: theme.accent }]} />
-            <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left" }]}>{t("orgDash.sectionUpcoming")}</Text>
+            <Text
+              style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left" }]}
+              numberOfLines={2}
+            >
+              {t("orgDash.sectionUpcoming")}
+            </Text>
           </View>
           {upcoming.length === 0 ? (
             <Text style={styles.upcomingEmpty}>{t("orgDash.upcomingEmpty")}</Text>
@@ -346,7 +398,7 @@ export default function OrgDashboardScreen() {
                 <View style={[styles.upcomingInner, { flexDirection: rowDir }]}>
                   <View style={[styles.upcomingLeftRail, { backgroundColor: theme.accent }]} />
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={[styles.upcomingWhen, { color: theme.accent }]}>
+                    <Text style={[styles.upcomingWhen, { color: theme.accent }]} numberOfLines={2}>
                       {new Date(a.starts_at).toLocaleString(undefined, {
                         timeZone: a.display_timezone || undefined,
                         weekday: "short",
@@ -357,9 +409,13 @@ export default function OrgDashboardScreen() {
                       })}
                     </Text>
                     {a.service_title ? (
-                      <Text style={styles.upcomingSvc}>{a.service_title}</Text>
+                      <Text style={styles.upcomingSvc} numberOfLines={2}>
+                        {a.service_title}
+                      </Text>
                     ) : null}
-                    <Text style={styles.upcomingPet}>{a.pet_name || "—"}</Text>
+                    <Text style={styles.upcomingPet} numberOfLines={2}>
+                      {a.pet_name || "—"}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -375,7 +431,12 @@ export default function OrgDashboardScreen() {
 
           <View style={[styles.sectionHead, { flexDirection: rowDir, marginTop: 6 }]}>
             <View style={[styles.sectionAccentBar, { backgroundColor: theme.accent }]} />
-            <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left" }]}>{t("orgDash.sectionActions")}</Text>
+            <Text
+              style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left" }]}
+              numberOfLines={2}
+            >
+              {t("orgDash.sectionActions")}
+            </Text>
           </View>
 
           <View style={styles.grid}>
@@ -388,7 +449,9 @@ export default function OrgDashboardScreen() {
                 <View style={[styles.tileIcon, { backgroundColor: theme.accentSoft }]}>
                   <Ionicons name="business-outline" size={26} color={theme.accent} />
                 </View>
-                <Text style={styles.tileTitle}>{t("orgProfileSettings.dashboardTileTitle")}</Text>
+                <Text style={styles.tileTitle} numberOfLines={3}>
+                  {t("orgProfileSettings.dashboardTileTitle")}
+                </Text>
                 <Text style={styles.tileDesc} numberOfLines={3}>
                   {t("orgProfileSettings.dashboardTileDesc")}
                 </Text>
@@ -405,7 +468,9 @@ export default function OrgDashboardScreen() {
                   <View style={[styles.tileIconSm2, { backgroundColor: theme.accentSoft }]}>
                     <Ionicons name="calendar-sharp" size={22} color={theme.accent} />
                   </View>
-                  <Text style={styles.tileTitleSm2}>{t("orgDashboard.openCalendar")}</Text>
+                  <Text style={styles.tileTitleSm2} numberOfLines={3}>
+                    {t("orgDashboard.openCalendar")}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity
@@ -417,10 +482,166 @@ export default function OrgDashboardScreen() {
                   <View style={[styles.tileIconSm2, { backgroundColor: theme.accentSoft }]}>
                     <Ionicons name="pricetag-outline" size={22} color={theme.accent} />
                   </View>
-                  <Text style={styles.tileTitleSm2}>{t("orgDash.openServices")}</Text>
+                  <Text style={styles.tileTitleSm2} numberOfLines={3}>
+                    {t("orgDash.openServices")}
+                  </Text>
                   <Text style={styles.tileMicro} numberOfLines={2}>
                     {t("orgDash.openServicesDesc")}
                   </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.tileWide, styles.shadow]}
+              activeOpacity={0.92}
+              onPress={() => router.push("/org-offers")}
+            >
+              <LinearGradient colors={["#ffffff", "#fff7ed"]} style={styles.tileInnerRow}>
+                <View style={[styles.tileIcon, { backgroundColor: "#ffedd5" }]}>
+                  <Ionicons name="pricetags-outline" size={26} color="#c2410c" />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    style={[styles.tileTitle, { textAlign: isRTL ? "right" : "left" }]}
+                    numberOfLines={2}
+                  >
+                    {t("orgDash.offersTitle")}
+                  </Text>
+                  <Text style={[styles.tileDesc, { textAlign: isRTL ? "right" : "left" }]} numberOfLines={2}>
+                    {t("orgDash.offersDesc")}
+                  </Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={[styles.tileRow, { flexDirection: rowDir }]}>
+              <TouchableOpacity style={[styles.tileHalf, styles.shadow]} activeOpacity={0.92} onPress={() => router.push("/org-visitors")}>
+                <LinearGradient colors={["#ffffff", "#f0fdf9"]} style={styles.tileInnerTight}>
+                  <View style={[styles.tileIconSm2, { backgroundColor: "#d1fae5" }]}>
+                    <Ionicons name="person-add-outline" size={22} color="#047857" />
+                  </View>
+                  <Text style={styles.tileTitleSm2} numberOfLines={3}>
+                    {t("orgDash.visitors")}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.tileHalf, styles.shadow]} activeOpacity={0.92} onPress={() => router.push("/org-interviews")}>
+                <LinearGradient colors={["#ffffff", "#faf5ff"]} style={styles.tileInnerTight}>
+                  <View style={[styles.tileIconSm2, { backgroundColor: "#ede9fe" }]}>
+                    <Ionicons name="document-text-outline" size={22} color="#7c3aed" />
+                  </View>
+                  <Text style={styles.tileTitleSm2} numberOfLines={3}>
+                    {t("orgDash.interviews")}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.tileRow, { flexDirection: rowDir }]}>
+              <TouchableOpacity style={[styles.tileHalf, styles.shadow]} activeOpacity={0.92} onPress={() => router.push("/org-lodging")}>
+                <LinearGradient colors={["#ffffff", "#f0f9ff"]} style={styles.tileInnerTight}>
+                  <View style={[styles.tileIconSm2, { backgroundColor: "#e0f2fe" }]}>
+                    <Ionicons name="business-outline" size={22} color="#0369a1" />
+                  </View>
+                  <Text style={styles.tileTitleSm2} numberOfLines={3}>
+                    {t("orgDash.lodging")}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.tileHalf, styles.shadow]} activeOpacity={0.92} onPress={() => router.push("/org-appointment-track")}>
+                <LinearGradient colors={["#ffffff", "#f0fdf4"]} style={styles.tileInnerTight}>
+                  <View style={[styles.tileIconSm2, { backgroundColor: "#bbf7d0" }]}>
+                    <Ionicons name="pulse-outline" size={22} color="#15803d" />
+                  </View>
+                  <Text style={styles.tileTitleSm2} numberOfLines={3}>
+                    {t("orgDash.appointmentTrack")}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={[styles.tileWide, styles.shadow]}
+              activeOpacity={0.92}
+              onPress={() => router.push("/org-clinic-hub")}
+            >
+              <View style={[styles.tileInnerRow, { flexDirection: rowDir }]}>
+                <View style={[styles.tileIconSm, { backgroundColor: "#bfdbfe" }]}>
+                  <Ionicons name="folder-open-outline" size={22} color="#1d4ed8" />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.tileTitleSm} numberOfLines={3}>
+                    {t("orgDash.recordsCrmTitle")}
+                  </Text>
+                  <Text style={styles.tileDescSm} numberOfLines={2}>
+                    {t("orgDash.recordsCrmDesc")}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#94a3b8" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tileWide, styles.shadow]}
+              activeOpacity={0.92}
+              onPress={() => router.push("/org-accounting-hub")}
+            >
+              <View style={[styles.tileInnerRow, { flexDirection: rowDir }]}>
+                <View style={[styles.tileIconSm, { backgroundColor: "#ccfbf1" }]}>
+                  <Ionicons name="cash-outline" size={22} color="#0f766e" />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.tileTitleSm} numberOfLines={3}>
+                    {t("orgDash.accountingTitle")}
+                  </Text>
+                  <Text style={styles.tileDescSm} numberOfLines={2}>
+                    {t("orgDash.accountingDesc")}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#94a3b8" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tileWide, styles.shadow]}
+              activeOpacity={0.92}
+              onPress={() => router.push("/org-insights-hub")}
+            >
+              <View style={[styles.tileInnerRow, { flexDirection: rowDir }]}>
+                <View style={[styles.tileIconSm, { backgroundColor: "#dbeafe" }]}>
+                  <Ionicons name="bar-chart-outline" size={22} color="#1e40af" />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.tileTitleSm} numberOfLines={3}>
+                    {t("orgDash.reportingTitle")}
+                  </Text>
+                  <Text style={styles.tileDescSm} numberOfLines={2}>
+                    {t("orgDash.reportingDesc")}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#94a3b8" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
+              </View>
+            </TouchableOpacity>
+
+            <View style={[styles.tileRow, { flexDirection: rowDir }]}>
+              <TouchableOpacity style={[styles.tileHalf, styles.shadow]} activeOpacity={0.92} onPress={() => router.push("/org-vaccinations")}>
+                <LinearGradient colors={["#ffffff", "#fff1f2"]} style={styles.tileInnerTight}>
+                  <View style={[styles.tileIconSm2, { backgroundColor: "#fecaca" }]}>
+                    <Ionicons name="eyedrop-outline" size={22} color="#dc2626" />
+                  </View>
+                  <Text style={styles.tileTitleSm2} numberOfLines={3}>
+                    {t("orgDash.vaccinations")}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.tileHalf, styles.shadow]} activeOpacity={0.92} onPress={() => router.push("/notifications")}>
+                <LinearGradient colors={["#ffffff", "#fafafa"]} style={styles.tileInnerTight}>
+                  <View style={[styles.tileIconSm2, { backgroundColor: "#fed7aa" }]}>
+                    <Ionicons name="notifications-outline" size={22} color="#c2410c" />
+                  </View>
+                  <Text style={styles.tileTitleSm2} numberOfLines={3}>
+                    {t("orgDash.inbox")}
+                  </Text>
+                  <Text style={styles.tileMicro} numberOfLines={2}>{t("orgDash.inboxDesc")}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -434,9 +655,11 @@ export default function OrgDashboardScreen() {
                 <View style={[styles.tileIcon, { backgroundColor: theme.accentSoft }]}>
                   <Ionicons name="construct-outline" size={26} color={theme.accent} />
                 </View>
-                <Text style={styles.tileTitle}>Bundles, staff & broadcasts</Text>
+                <Text style={styles.tileTitle} numberOfLines={3}>
+                  {t("orgDash.operationsTitle")}
+                </Text>
                 <Text style={styles.tileDesc} numberOfLines={3}>
-                  Create service bundles, invite staff logins, retail stock lines, waitlist, and customer broadcasts.
+                  {t("orgDash.operationsDesc")}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -451,8 +674,12 @@ export default function OrgDashboardScreen() {
                   <View style={[styles.tileIcon, { backgroundColor: "#ffedd5" }]}>
                     <Ionicons name="medkit-outline" size={26} color="#c2410c" />
                   </View>
-                  <Text style={styles.tileTitle}>{t("orgDashboard.openReports")}</Text>
-                  <Text style={styles.tileDesc}>{t("orgDashboard.reportsShortcutDesc")}</Text>
+                  <Text style={styles.tileTitle} numberOfLines={3}>
+                    {t("orgDashboard.openReports")}
+                  </Text>
+                  <Text style={styles.tileDesc} numberOfLines={4}>
+                    {t("orgDashboard.reportsShortcutDesc")}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             ) : null}
@@ -466,9 +693,13 @@ export default function OrgDashboardScreen() {
                 <View style={[styles.tileIconSm, { backgroundColor: "#e0f2fe" }]}>
                   <Ionicons name="paw" size={22} color="#0369a1" />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.tileTitleSm}>{t("orgDashboard.openMarket")}</Text>
-                  <Text style={styles.tileDescSm}>{t("orgDashboard.petoraDesc")}</Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.tileTitleSm} numberOfLines={3}>
+                    {t("orgDashboard.openMarket")}
+                  </Text>
+                  <Text style={styles.tileDescSm} numberOfLines={4}>
+                    {t("orgDashboard.petoraDesc")}
+                  </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#94a3b8" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
               </View>
@@ -505,6 +736,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === "android" ? 8 : 4,
     paddingBottom: 24,
     alignItems: "flex-start",
+    justifyContent: "space-between",
     gap: 12,
   },
   heroTextCol: { flex: 1, minWidth: 0, paddingEnd: 4 },
@@ -527,15 +759,27 @@ const styles = StyleSheet.create({
     color: "#fff",
     letterSpacing: -0.6,
     maxWidth: "100%",
+    width: "100%",
+    flexShrink: 1,
   },
-  heroSub: { fontSize: 15, color: "rgba(255,255,255,0.92)", marginTop: 8, lineHeight: 22, maxWidth: "100%" },
+  heroSub: {
+    fontSize: 15,
+    color: "rgba(255,255,255,0.92)",
+    marginTop: 8,
+    lineHeight: 22,
+    maxWidth: "100%",
+    width: "100%",
+    flexShrink: 1,
+  },
   sheetTag: {
     fontSize: 10,
     fontWeight: "800",
     color: "rgba(255,255,255,0.78)",
-    letterSpacing: 1.8,
+    letterSpacing: 1,
     marginTop: 10,
     textTransform: "uppercase",
+    maxWidth: "100%",
+    flexShrink: 1,
   },
   email: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 8 },
   outBtn: {
@@ -548,6 +792,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.35)",
     marginTop: 4,
+    flexShrink: 0,
   },
   scroll: { paddingHorizontal: 0, paddingBottom: 32, gap: 0 },
   sheet: {
@@ -569,6 +814,15 @@ const styles = StyleSheet.create({
   },
   handleWrap: { alignItems: "center", paddingVertical: 8 },
   handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: "#cbd5e1" },
+  langBlock: { marginBottom: 18 },
+  langSectionTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: "#0f172a",
+    letterSpacing: -0.2,
+    marginBottom: 4,
+  },
+  langHint: { fontSize: 11, color: "#64748b", lineHeight: 16, marginBottom: 10 },
   servicesBanner: {
     alignItems: "center",
     gap: 12,
@@ -588,7 +842,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   servicesBannerTextWrap: { flex: 1, minWidth: 0, justifyContent: "center" },
-  servicesBannerTitle: { fontSize: 14, fontWeight: "800", color: "#0f172a", lineHeight: 19 },
+  servicesBannerTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0f172a",
+    lineHeight: 19,
+    flexShrink: 1,
+    width: "100%",
+  },
   statsColumn: { gap: 12, marginTop: 0, marginBottom: 22 },
   statCardWide: {
     borderRadius: 20,
@@ -679,13 +940,14 @@ const styles = StyleSheet.create({
   tileRow: { gap: 12, marginBottom: 0 },
   tileHalf: {
     flex: 1,
+    minWidth: 0,
     borderRadius: 22,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#e2e8f0",
     minHeight: 128,
   },
-  tileInnerTight: { padding: 16, alignItems: "flex-start" },
+  tileInnerTight: { padding: 16, alignItems: "flex-start", alignSelf: "stretch", width: "100%" },
   tileIconSm2: {
     width: 44,
     height: 44,
@@ -694,8 +956,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 12,
   },
-  tileTitleSm2: { fontSize: 15, fontWeight: "900", color: "#0f172a" },
-  tileMicro: { fontSize: 11, color: "#64748b", marginTop: 6, lineHeight: 15 },
+  tileTitleSm2: { fontSize: 15, fontWeight: "900", color: "#0f172a", flexShrink: 1, width: "100%" },
+  tileMicro: { fontSize: 11, color: "#64748b", marginTop: 6, lineHeight: 15, flexShrink: 1, width: "100%" },
   tile: {
     borderRadius: 22,
     overflow: "hidden",
@@ -739,10 +1001,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  tileTitle: { fontSize: 18, fontWeight: "900", color: "#0f172a" },
-  tileDesc: { fontSize: 13, color: "#64748b", marginTop: 6, lineHeight: 19 },
-  tileTitleSm: { fontSize: 16, fontWeight: "800", color: "#0f172a" },
-  tileDescSm: { fontSize: 12, color: "#64748b", marginTop: 4, lineHeight: 18 },
+  tileTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0f172a",
+    flexShrink: 1,
+    width: "100%",
+  },
+  tileDesc: {
+    fontSize: 13,
+    color: "#64748b",
+    marginTop: 6,
+    lineHeight: 19,
+    flexShrink: 1,
+    width: "100%",
+  },
+  tileTitleSm: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0f172a",
+    flexShrink: 1,
+    width: "100%",
+  },
+  tileDescSm: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 4,
+    lineHeight: 18,
+    flexShrink: 1,
+    width: "100%",
+  },
   notePill: {
     marginTop: 20,
     padding: 16,
@@ -753,6 +1041,6 @@ const styles = StyleSheet.create({
     borderColor: "#e2e8f0",
     alignItems: "flex-start",
   },
-  note: { flex: 1, fontSize: 13, color: "#475569", lineHeight: 20 },
+  note: { flex: 1, minWidth: 0, fontSize: 13, color: "#475569", lineHeight: 20 },
   inlineLoad: { marginTop: 12, alignItems: "center" },
 });

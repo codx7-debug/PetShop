@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,109 +12,12 @@ import BottomNavBar from './bottomNavBar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { router } from 'expo-router';
 
-interface Clinic {
-  id: string;
-  name: string;
-  location: string;
-  consultationFee: number;
-  description: string;
-  image: string;
-  services: string[];
-  rating: number;
-}
-
-// 5 static clinics
-const CLINICS: Clinic[] = [
-  {
-    id: '1',
-    name: 'Paws & Care Vet Clinic',
-    location: 'Beşiktaş, İstanbul',
-    consultationFee: 370,
-    description:
-      "Comprehensive care for your pets with modern equipment and kind, professional staff. Emergency services and dental care available.",
-    image:
-      'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=crop&w=750&q=80',
-    services: [
-      'Emergency Care',
-      'Dental Cleaning',
-      'Vaccination',
-      'Pet Surgery',
-      'Diagnostics',
-    ],
-    rating: 4.9,
-  },
-  {
-    id: '2',
-    name: 'Happy Tails Veterinary',
-    location: 'Kadıköy, İstanbul',
-    consultationFee: 320,
-    description:
-      "Friendly neighborhood clinic with experienced veterinarians. Preventive checkups, diagnostics, and nutritional advice.",
-    image:
-      'https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=750&q=80',
-    services: [
-      'Wellness Exams',
-      'Microchipping',
-      'Parasite Control',
-      'Nutrition Counseling',
-    ],
-    rating: 4.7,
-  },
-  {
-    id: '3',
-    name: 'Blue Paw Animal Hospital',
-    location: 'Şişli, İstanbul',
-    consultationFee: 425,
-    description:
-      "State-of-the-art animal hospital offering surgery, imaging, and rehabilitation. 24/7 emergency and specialized care.",
-    image:
-      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=750&q=80',
-    services: [
-      '24/7 Emergency',
-      'X-ray & Ultrasound',
-      'Physical Therapy',
-      'Specialist Vet',
-    ],
-    rating: 4.8,
-  },
-  {
-    id: '4',
-    name: 'PetLife Clinic',
-    location: 'Ataşehir, İstanbul',
-    consultationFee: 270,
-    description:
-      "Trusted local clinic with a focus on preventive medicine and affordable services. Pet pharmacy in-house.",
-    image:
-      'https://images.unsplash.com/photo-1494256997604-768d1f608cac?auto=format&fit=crop&w=750&q=80',
-    services: [
-      'Vaccinations',
-      'Nutrition Advice',
-      'Pet Pharmacy',
-    ],
-    rating: 4.5,
-  },
-  {
-    id: '5',
-    name: 'CityVet Poliklinik',
-    location: 'Bakırköy, İstanbul',
-    consultationFee: 390,
-    description:
-      "Modern facility with compassionate care for pets of all kinds. In-house diagnostics, advanced treatments, and recovery rooms.",
-    image:
-      'https://images.unsplash.com/photo-1518715308788-3005759c61fc?auto=format&fit=crop&w=750&q=80',
-    services: [
-      'Lab Diagnostics',
-      'Surgery',
-      'Recovery Suites',
-      'Ultrasound',
-    ],
-    rating: 4.6,
-  },
-];
+import { clinicsForLocale, type DemoClinic } from '../i18n/listingDemoCatalog';
 
 const PetClinicPage: React.FC = () => {
-  const { t } = useLanguage();
-  const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
+  const { t, locale } = useLanguage();
+  const [selectedClinic, setSelectedClinic] = useState<DemoClinic | null>(null);
+  const clinics = useMemo(() => clinicsForLocale(locale), [locale]);
 
   return (
     <View style={styles.container}>
@@ -186,7 +89,7 @@ const PetClinicPage: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.pageTitle}>{t('listingClinic.pageTitle')}</Text>
         <View style={styles.listContainer}>
-          {CLINICS.map(clinic => (
+          {clinics.map(clinic => (
             <TouchableOpacity
               key={clinic.id}
               style={styles.clinicCard}

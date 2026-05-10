@@ -142,20 +142,50 @@ export default function ProfilePetsScreen() {
           contentContainerStyle={styles.list}
           ListEmptyComponent={<Text style={styles.empty}>{t("userProfile.petsEmpty")}</Text>}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card} onPress={() => openEdit(item)} activeOpacity={0.85}>
-              <View style={[styles.cardInner, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-                <View style={styles.paw}>
-                  <Text style={{ fontSize: 22 }}>🐾</Text>
+            <View style={styles.card}>
+              <TouchableOpacity onPress={() => openEdit(item)} activeOpacity={0.85}>
+                <View style={[styles.cardInner, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                  <View style={styles.paw}>
+                    <Text style={{ fontSize: 22 }}>🐾</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.petName}>{item.name}</Text>
+                    <Text style={styles.petSub}>
+                      {[item.species, item.breed].filter(Boolean).join(" · ") || "—"}
+                    </Text>
+                  </View>
+                  <Ionicons name="create-outline" size={20} color="#627ec6" />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.petName}>{item.name}</Text>
-                  <Text style={styles.petSub}>
-                    {[item.species, item.breed].filter(Boolean).join(" · ") || "—"}
-                  </Text>
-                </View>
-                <Ionicons name="create-outline" size={20} color="#627ec6" />
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.vaccineRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+                onPress={() =>
+                  router.push({
+                    pathname: "/pet-documents",
+                    params: { petId: String(item.id), petName: item.name },
+                  })
+                }
+                activeOpacity={0.88}
+              >
+                <Ionicons name="document-text-outline" size={18} color="#2563eb" />
+                <Text style={[styles.vaccineTxt, { color: "#1d4ed8" }]}>{t("userProfile.petDocumentsCta")}</Text>
+                <Ionicons name="chevron-forward" size={16} color="#94a3b8" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.vaccineRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}
+                onPress={() =>
+                  router.push({
+                    pathname: "/pet-vaccinations",
+                    params: { petId: String(item.id), petName: item.name },
+                  })
+                }
+                activeOpacity={0.88}
+              >
+                <Ionicons name="medkit-outline" size={18} color="#0f766e" />
+                <Text style={styles.vaccineTxt}>{t("userProfile.petVaccinationsCta")}</Text>
+                <Ionicons name="chevron-forward" size={16} color="#94a3b8" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
+              </TouchableOpacity>
+            </View>
           )}
         />
       )}
@@ -234,6 +264,16 @@ const styles = StyleSheet.create({
   },
   petName: { fontSize: 16, fontWeight: "800", color: "#0f172a" },
   petSub: { fontSize: 13, color: "#64748b", marginTop: 4 },
+  vaccineRow: {
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#eef2f6",
+    backgroundColor: "#f8fafc",
+  },
+  vaccineTxt: { flex: 1, fontWeight: "800", fontSize: 14, color: "#0f766e" },
   modalBg: {
     flex: 1,
     backgroundColor: "rgba(15,23,42,0.45)",

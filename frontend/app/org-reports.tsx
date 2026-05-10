@@ -11,8 +11,11 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  Pressable,
+  Keyboard,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +32,7 @@ type ReportRow = {
 
 export default function OrgReportsScreen() {
   const { t, isRTL } = useLanguage();
+  const insets = useSafeAreaInsets();
   const [access, setAccess] = useState<"pending" | "allowed" | "blocked">("pending");
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,7 +99,7 @@ export default function OrgReportsScreen() {
       if (ot !== "vet") {
         setAccess("blocked");
         Alert.alert("", t("orgReports.vetOnly"), [
-          { text: "OK", onPress: () => router.replace("/org-dashboard") },
+          { text: t("common.ok"), onPress: () => router.replace("/org-dashboard") },
         ]);
         return;
       }
@@ -208,17 +212,30 @@ export default function OrgReportsScreen() {
 
       <Modal transparent visible={!!resolveOpen} animationType="fade" onRequestClose={() => setResolveOpen(null)}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === "ios" ? Math.max(insets.top, 8) : 0}
         >
-          <View style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.45)", justifyContent: "center" }}>
-            <TouchableOpacity
-              activeOpacity={1}
+          <View style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.45)" }}>
+            <Pressable
               style={StyleSheet.absoluteFillObject}
-              onPress={() => setResolveOpen(null)}
+              onPress={() => {
+                Keyboard.dismiss();
+                setResolveOpen(null);
+              }}
             />
-            <View style={{ paddingHorizontal: 20 }} pointerEvents="box-none">
-              <View style={styles.modalCard} pointerEvents="auto">
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+              keyboardDismissMode="interactive"
+              contentContainerStyle={{
+                flexGrow: 1,
+                justifyContent: "center",
+                paddingHorizontal: 20,
+                paddingVertical: Math.max(insets.bottom, 16),
+              }}
+            >
+              <View style={styles.modalCard}>
                 <Text style={styles.modalTitle}>{t("orgReports.summaryPromptTitle")}</Text>
                 <Text style={styles.modalHint}>{t("orgReports.summaryPromptHint")}</Text>
                 <TextInput
@@ -252,7 +269,7 @@ export default function OrgReportsScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-            </View>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>

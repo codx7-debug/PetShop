@@ -322,7 +322,7 @@ export default function ProviderCatalogScreen() {
               <Text style={[styles.tplChipTxt, { color: theme.accent }]} numberOfLines={2}>
                 {t(tpl.titleKey)}
               </Text>
-              <Text style={styles.tplDur}>{tpl.duration} min</Text>
+              <Text style={styles.tplDur}>{t("providerCatalog.durationChipMinutes", { n: tpl.duration })}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -347,7 +347,7 @@ export default function ProviderCatalogScreen() {
           value={duration}
           onChangeText={setDuration}
           keyboardType="number-pad"
-          placeholder="60"
+          placeholder={t("providerCatalog.durationPlaceholder")}
           placeholderTextColor="#94a3b8"
           style={styles.input}
         />
@@ -356,7 +356,7 @@ export default function ProviderCatalogScreen() {
           value={priceTry}
           onChangeText={setPriceTry}
           keyboardType="decimal-pad"
-          placeholder="—"
+          placeholder={t("providerCatalog.priceOptionalPlaceholder")}
           placeholderTextColor="#94a3b8"
           style={styles.input}
         />

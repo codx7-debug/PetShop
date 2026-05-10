@@ -12,11 +12,7 @@ import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
 import BottomNavBar from './bottomNavBar';
 import { useLanguage } from '../contexts/LanguageContext';
-import {
-  AppLocale,
-  LOCALE_NAMES,
-  SUPPORTED_LOCALES,
-} from '../i18n/translations';
+import { LanguageShortcutsBar } from '../components/LanguageShortcutsBar';
 
 export default function SettingsPage() {
   const { t, locale, setLocale, isRTL } = useLanguage();
@@ -123,37 +119,12 @@ export default function SettingsPage() {
           >
             <Text style={[styles.sectionLabel, { color: labelColor }]}>{t('settings.languageTitle')}</Text>
             <Text style={[styles.languageHint, { color: descColor }]}>{t('settings.languageHint')}</Text>
-            <View
-              style={[
-                styles.langRow,
-                { flexDirection: isRTL ? 'row-reverse' : 'row' },
-              ]}
-            >
-              {SUPPORTED_LOCALES.map((code) => {
-                const active = locale === code;
-                return (
-                  <TouchableOpacity
-                    key={code}
-                    activeOpacity={0.85}
-                    onPress={() => void setLocale(code)}
-                    style={[
-                      styles.langChip,
-                      active && styles.langChipActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.langChipText,
-                        active && styles.langChipTextActive,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {LOCALE_NAMES[code as AppLocale]}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <LanguageShortcutsBar
+              variant="surface"
+              locale={locale}
+              onSelect={setLocale}
+              isRTL={isRTL}
+            />
           </View>
 
           <View
@@ -246,22 +217,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   sectionLabel: { fontSize: 17, fontWeight: '700', marginBottom: 6 },
-  languageHint: { fontSize: 12, opacity: 0.85, marginBottom: 12 },
-  langRow: { flexWrap: 'wrap', gap: 8 },
-  langChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: '#f0fdfa',
-    borderWidth: 1,
-    borderColor: '#b2dfdb',
-  },
-  langChipActive: {
-    backgroundColor: '#036672',
-    borderColor: '#036672',
-  },
-  langChipText: { fontSize: 14, fontWeight: '600', color: '#00695c' },
-  langChipTextActive: { color: '#fff' },
+  languageHint: { fontSize: 12, opacity: 0.85, marginBottom: 8 },
   settingItem: {
     borderRadius: 14,
     padding: 16,

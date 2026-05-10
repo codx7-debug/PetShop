@@ -8,6 +8,7 @@ import {
   Image,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -124,14 +125,27 @@ type StoredUser = {
   email?: string;
   full_name?: string | null;
   role?: string;
+  // Add breed?: string; or any future properties if needed
 };
 
-type PetPreview = { id: number; name: string; species?: string | null };
+type PetPreview = { id: number; name: string; species?: string | null; breed?: string | null };
+
+type AdoptionMine = {
+  id: number;
+  pet_name: string;
+  species?: string | null;
+  breed?: string | null;
+  age_label?: string | null;
+  photo_url?: string | null;
+};
+
+const ADOPT_PLACEHOLDER = 'https://cdn-icons-png.flaticon.com/512/616/616408.png';
 
 export default function ProfileScreen() {
   const { t } = useLanguage();
   const [user, setUser] = useState<StoredUser | null>(null);
   const [pets, setPets] = useState<PetPreview[]>([]);
+  const [adoptionMine, setAdoptionMine] = useState<AdoptionMine[]>([]);
   const [loadingMe, setLoadingMe] = useState(false);
   const [hasToken, setHasToken] = useState(false);
 
@@ -144,6 +158,7 @@ export default function ProfileScreen() {
         if (stale) await AsyncStorage.removeItem('user');
         setUser(null);
         setPets([]);
+        setAdoptionMine([]);
         setHasToken(false);
         return;
       }
@@ -154,6 +169,7 @@ export default function ProfileScreen() {
     } catch {
       setUser(null);
       setPets([]);
+      setAdoptionMine([]);
       setHasToken(false);
     }
   }, []);
@@ -180,8 +196,14 @@ export default function ProfileScreen() {
           const pr = await fetch(`${API_BASE_URL}/api/me/pets`, { headers: await getAuthHeaders(false) });
           const pj = await parseResponseJson<{ pets?: PetPreview[] }>(pr);
           setPets(pj.data?.pets?.slice(0, 4) || []);
+          const ar = await fetch(`${API_BASE_URL}/api/me/adoption-listings`, {
+            headers: await getAuthHeaders(false),
+          });
+          const aj = await parseResponseJson<{ listings?: AdoptionMine[] }>(ar);
+          setAdoptionMine(aj.ok ? aj.data?.listings || [] : []);
         } else {
           setPets([]);
+          setAdoptionMine([]);
         }
       } else {
         if (res.status === 401) {
@@ -189,6 +211,7 @@ export default function ProfileScreen() {
           setHasToken(false);
           setUser(null);
           setPets([]);
+          setAdoptionMine([]);
         } else {
           await refreshLocalUser();
         }
@@ -217,9 +240,85 @@ export default function ProfileScreen() {
     router.push({ pathname: '/login', params: { signInUser: '1' } });
   };
 
-  const goOrLogin = (path: '/profile-edit' | '/profile-password' | '/profile-payments' | '/profile-address' | '/profile-notifications' | '/profile-pets') => {
+  // FIX: Add accepted adoption path to prevent TS error (was missing in union)
+  const goOrLogin = (
+    path:
+      | '/profile-edit'
+      | '/profile-password'
+      | '/profile-payments'
+      | '/profile-address'
+      | '/profile-notifications'
+      | '/profile-pets'
+      | '/adoption/new'
+      | '/adoption'
+  ) => {
     if (hasToken) router.push(path);
     else openSignIn();
+  };
+
+  const removeAdoptionMine = async (listingId: number) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/me/adoption-listings/${listingId}`, {
+        method: 'DELETE',
+        headers: await getAuthHeaders(false),
+      });
+      const parsed = await parseResponseJson(res);
+      if (!parsed.ok) {
+        Alert.alert('', t('profile.listingDeleteFail'));
+        return;
+      }
+      setAdoptionMine((prev) => prev.filter((x) => x.id !== listingId));
+    } catch {
+      Alert.alert('', t('profile.listingDeleteFail'));
+    }
+  };
+
+  const confirmRemoveListing = (listingId: number) => {
+    Alert.alert(t('profile.adoptionRemoveListing'), t('profile.adoptionRemoveListingConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.adoptionRemoveListing'), style: 'destructive', onPress: () => void removeAdoptionMine(listingId) },
+    ]);
+  };
+
+  const deleteAccount = () => {
+    Alert.alert(t('profile.deleteAccountTitle'), t('profile.deleteAccountBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.deleteAccountConfirmBtn'),
+        style: 'destructive',
+        onPress: () =>
+          void (async () => {
+            setLoadingMe(true);
+            try {
+              const res = await fetch(`${API_BASE_URL}/api/me/account`, {
+                method: 'DELETE',
+                headers: await getAuthHeaders(false),
+              });
+              const parsed = await parseResponseJson(res);
+              if (!parsed.ok) {
+                Alert.alert('', t('profile.deleteAccountFail'));
+                return;
+              }
+              await clearUserSession();
+              setUser(null);
+              setPets([]);
+              setAdoptionMine([]);
+              setHasToken(false);
+              Alert.alert('', t('profile.deleteAccountDone'), [
+                {
+                  text: t('common.ok'),
+                  onPress: () =>
+                    router.replace({ pathname: '/login', params: { signInUser: '1' } }),
+                },
+              ]);
+            } catch {
+              Alert.alert('', t('profile.deleteAccountFail'));
+            } finally {
+              setLoadingMe(false);
+            }
+          })(),
+      },
+    ]);
   };
 
   const logout = async () => {
@@ -313,7 +412,8 @@ export default function ProfileScreen() {
                   <PetCard
                     key={p.id}
                     name={p.name}
-                    breed={[p.species, p.breed].filter(Boolean).join(' · ') || 'Pet'}
+                    // Fix: filter undefined for breed or species
+                    breed={([p.species, p.breed].filter(Boolean).join(' · ') || 'Pet')}
                     icon="🐾"
                     color="#fff"
                     onPress={() => goOrLogin('/profile-pets')}
@@ -323,6 +423,84 @@ export default function ProfileScreen() {
             </View>
           </>
         ) : null}
+      
+        {/* ──────────────── Adoption: Add Pet For Adoption Section ──────────────── */}
+        {isUser ? (
+          <>
+            <View style={sectionStyles.sectionHeader}>
+              <Text style={[sectionStyles.sectionTitle, { color: '#2b415c' }]}>{t('profile.adoptionSection')}</Text>
+            </View>
+            <View style={[petStyles.petsContainer, { marginBottom: 4 }]}>
+              <View style={petStyles.adoptionActionsRow}>
+                <TouchableOpacity
+                  style={petStyles.adoptionBrowsePill}
+                  activeOpacity={0.88}
+                  onPress={() => router.push('/adoption')}
+                >
+                  <Ionicons name="search-outline" size={18} color="#217648" style={{ marginRight: 6 }} />
+                  <Text style={petStyles.adoptionBrowsePillText} numberOfLines={1}>
+                    {t('profile.adoptionBrowse')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={petStyles.adoptionAddPill}
+                  activeOpacity={0.88}
+                  onPress={() => goOrLogin('/adoption/new')}
+                >
+                  <MaterialCommunityIcons name="plus" size={20} color="#fff" style={{ marginRight: 4 }} />
+                  <Text style={petStyles.adoptionAddPillText} numberOfLines={1}>
+                    {t('profile.adoptionAddPet')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {adoptionMine.length === 0 ? (
+                <Text style={petStyles.adoptionEmptyHint}>{t('profile.adoptionEmptyMine')}</Text>
+              ) : (
+                adoptionMine.map((listing) => (
+                  <View key={listing.id} style={petStyles.adoptionMineCard}>
+                    <Image
+                      source={{ uri: listing.photo_url?.trim() || ADOPT_PLACEHOLDER }}
+                      style={petStyles.adoptionMineThumb}
+                    />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={petStyles.adoptionMineName} numberOfLines={1}>
+                        {listing.pet_name}
+                      </Text>
+                      <Text style={petStyles.adoptionMineMeta} numberOfLines={2}>
+                        {[listing.species, listing.breed, listing.age_label].filter(Boolean).join(' · ') || '—'}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0, gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={() =>
+                          router.push({ pathname: '/adoption/[id]', params: { id: String(listing.id) } })
+                        }
+                        hitSlop={10}
+                        accessibilityRole="button"
+                      >
+                        <Ionicons name="eye-outline" size={22} color="#627ec6" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => confirmRemoveListing(listing.id)}
+                        hitSlop={10}
+                        accessibilityRole="button"
+                      >
+                        <Ionicons name="trash-outline" size={22} color="#c5295b" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+              <TouchableOpacity style={petStyles.addPetBtn} onPress={() => goOrLogin('/adoption/new')}>
+                <View style={[petStyles.addPetIcon, { backgroundColor: '#e8f7ef' }]}>
+                  <MaterialCommunityIcons name="dog-side" size={22} color="#34a853" />
+                </View>
+                <Text style={[petStyles.addPetText, { color: '#217648' }]}>{t('profile.adoptionAddPetBtn')}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : null}
+  
 
         {/* Account settings */}
         <SectionHeader title={t('profile.accountSection')} />
@@ -370,6 +548,28 @@ export default function ProfileScreen() {
             onPress={() => goOrLogin('/profile-notifications')}
           />
         </View>
+
+        {isUser ? (
+          <TouchableOpacity
+            style={[
+              mainStyles.deleteAccountBtn,
+              { backgroundColor: '#fff5f5', borderColor: '#fecaca' },
+            ]}
+            activeOpacity={0.85}
+            onPress={deleteAccount}
+          >
+            <Ionicons name="warning-outline" size={18} color="#b91c1c" style={{ marginRight: 8 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={[mainStyles.deleteAccountTitle, { color: '#991b1b' }]}>
+                {t('profile.menuDeleteAccount')}
+              </Text>
+              <Text style={[mainStyles.deleteAccountSub, { color: '#b45309' }]}>
+                {t('profile.menuDeleteAccountSub')}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#f87171" />
+          </TouchableOpacity>
+        ) : null}
 
         {/* Logout / Sign in */}
         <TouchableOpacity
@@ -500,6 +700,25 @@ const mainStyles = StyleSheet.create({
   editProfileText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  deleteAccountTitle: {
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  deleteAccountSub: {
+    fontSize: 11,
+    marginTop: 3,
+    lineHeight: 15,
   },
   logoutBtn: {
     flexDirection: 'row',
@@ -674,5 +893,84 @@ const petStyles = StyleSheet.create({
   addPetText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  adoptionActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 10,
+    marginBottom: 12,
+  },
+  adoptionBrowsePill: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ecfdf5',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    paddingVertical: 11,
+    paddingHorizontal: 10,
+  },
+  adoptionBrowsePillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#217648',
+    flexShrink: 1,
+  },
+  adoptionAddPill: {
+    flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#34a853',
+    borderRadius: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    minWidth: 96,
+  },
+  adoptionAddPillText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  adoptionEmptyHint: {
+    fontSize: 13,
+    color: '#627ec6',
+    lineHeight: 19,
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  adoptionMineCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#e2e8f0',
+    marginBottom: 10,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  adoptionMineThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#edf1fa',
+  },
+  adoptionMineName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2b415c',
+  },
+  adoptionMineMeta: {
+    fontSize: 12,
+    color: '#627ec6',
+    marginTop: 2,
   },
 });

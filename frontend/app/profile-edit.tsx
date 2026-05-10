@@ -121,7 +121,7 @@ export default function ProfileEditScreen() {
           style={styles.input}
           value={dob}
           onChangeText={setDob}
-          placeholder="YYYY-MM-DD"
+          placeholder={t("userProfile.dobPlaceholder")}
           placeholderTextColor="#94a3b8"
         />
         <TouchableOpacity style={styles.btn} onPress={() => void save()} disabled={saving}>

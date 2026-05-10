@@ -98,7 +98,7 @@ export default function BookServiceScreen() {
       </View>
       {!showSkeleton && packages.length > 0 ? (
         <View style={{ marginBottom: 14 }}>
-          <Text style={[styles.pkgSectionTitle, { textAlign: isRTL ? "right" : "left" }]}>Bundles</Text>
+          <Text style={[styles.pkgSectionTitle, { textAlign: isRTL ? "right" : "left" }]}>{t("bookService.bundles")}</Text>
           {packages.map((p) => (
             <TouchableOpacity
               key={p.id}
@@ -136,7 +136,7 @@ export default function BookServiceScreen() {
             </TouchableOpacity>
           ))}
           <Text style={[styles.pkgSectionTitle, { textAlign: isRTL ? "right" : "left", marginTop: 8 }]}>
-            A la carte
+            {t("bookService.aLaCarte")}
           </Text>
         </View>
       ) : null}

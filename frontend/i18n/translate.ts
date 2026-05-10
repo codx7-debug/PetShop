@@ -1,6 +1,7 @@
 import type { AppLocale } from "./translations";
 import { translations } from "./translations";
 import { screenTranslations } from "./screenTranslations";
+import { extraScreenTranslations } from "./extraScreenTranslations";
 
 function readPath(root: Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((acc, part) => {
@@ -11,11 +12,31 @@ function readPath(root: Record<string, unknown>, path: string): unknown {
   }, root);
 }
 
+/** Overlay string maps per namespace (e.g. extra `browseServices` keys without replacing the whole group). */
+function mergeNamespaceOverlays(
+  base: Record<string, unknown>,
+  overlay: Record<string, Record<string, string>>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...base };
+  for (const [ns, additions] of Object.entries(overlay)) {
+    const prev = out[ns];
+    const merged =
+      prev && typeof prev === "object" && !Array.isArray(prev)
+        ? { ...(prev as Record<string, string>), ...additions }
+        : { ...additions };
+    out[ns] = merged;
+  }
+  return out;
+}
+
 function localeRoot(locale: AppLocale): Record<string, unknown> {
-  return {
+  const shallow: Record<string, unknown> = {
     ...(translations[locale] as unknown as Record<string, unknown>),
     ...(screenTranslations[locale] as unknown as Record<string, unknown>),
   };
+  const extra = extraScreenTranslations[locale];
+  if (!extra) return shallow;
+  return mergeNamespaceOverlays(shallow, extra);
 }
 
 function applyParams(template: string, params?: Record<string, string | number>): string {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,114 +12,12 @@ import BottomNavBar from './bottomNavBar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { router } from 'expo-router';
 
-interface Groomer {
-  id: string;
-  name: string;
-  location: string;
-  price: number;
-  description: string;
-  image: string;
-  services: string[];
-  rating: number;
-}
-
-// 5 static pet groomers (kuaför)
-const GROOMERS: Groomer[] = [
-  {
-    id: '1',
-    name: 'Pati Kuaför',
-    location: 'Beşiktaş, İstanbul',
-    price: 350,
-    description:
-      "Sevimli dostlarınıza özel bakım ve şımartıcı tıraş! Hijyen, nazik yaklaşım ve profesyonel kuaför kadrosuyla Pati Kuaför'de kaliteli hizmet sizi bekliyor.",
-    image:
-      'https://images.unsplash.com/photo-1518715308788-3005759c61fc?auto=format&fit=crop&w=750&q=80',
-    services: [
-      'Tırnak Kesimi',
-      'Banyo & Kurutma',
-      'Tüy Tıraşı',
-      'Kulak Temizliği',
-      'Koku Giderme',
-      'Uzman Kadro',
-    ],
-    rating: 4.7,
-  },
-  {
-    id: '2',
-    name: 'Pet Style Studio',
-    location: 'Kadıköy, İstanbul',
-    price: 420,
-    description:
-      "Trend tıraş modelleri, organik bakım ürünleri ve spa hizmetleriyle evcil dostunuza butik deneyim. Kedi ve köpekler için özel indirimler mevcut!",
-    image:
-      'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=crop&w=750&q=80',
-    services: [
-      'Tıraş Tasarımı',
-      'Spa Masajı',
-      'Parfüm',
-      'Cilt Bakımı',
-      'Tüy Açıcı',
-    ],
-    rating: 4.9,
-  },
-  {
-    id: '3',
-    name: 'Şık Pati Kuaför',
-    location: 'Şişli, İstanbul',
-    price: 390,
-    description:
-      "Evcil hayvanınız için kaliteli ve steril ortamda profesyonel bakım hizmeti! Her türlü tüy yapısına ve hayvana uygun ekipman ile müşteri memnuniyeti.",
-    image:
-      'https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=750&q=80',
-    services: [
-      'Banyo',
-      'Tarama',
-      'Köpük Tedavisi',
-      'Kedi/Tavşan Kuaförü',
-      'Hijyenik Tıraş',
-    ],
-    rating: 4.5,
-  },
-  {
-    id: '4',
-    name: 'Mavi Pati Grooming',
-    location: 'Ataşehir, İstanbul',
-    price: 320,
-    description:
-      "Bütçe dostu fiyatlar, deneyimli groomer ekibi. Küçük ve büyük cinsler için konforlu bakım ve tıraş seçenekleri. Düzenli kontrol fırsatı.",
-    image:
-      'https://images.unsplash.com/photo-1494256997604-768d1f608cac?auto=format&fit=crop&w=750&q=80',
-    services: [
-      'Bakım Kontrolü',
-      'Dökülen Tüy Temizliği',
-      'Küçük Irk Tıraşı',
-      'Büyük Irk Tıraşı',
-    ],
-    rating: 4.2,
-  },
-  {
-    id: '5',
-    name: 'Deluxe Pet Güzellik',
-    location: 'Bakırköy, İstanbul',
-    price: 480,
-    description:
-      "Lüks bakım, özel şampuanlar ve aksesuarlar. Randevulu servis ve bire bir müşteri yaklaşımı. Tüm hayvan dostlarımıza uygun hizmet!",
-    image:
-      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=750&q=80',
-    services: [
-      'VIP Bakım',
-      'Aksesuar',
-      'Organik Şampuan',
-      'Fön & Stil',
-      'Tüy Yenileme',
-    ],
-    rating: 4.8,
-  },
-];
+import { groomersForLocale, type DemoGroomer } from '../i18n/listingDemoCatalog';
 
 const PetKuaferPage: React.FC = () => {
-  const { t } = useLanguage();
-  const [selectedGroomer, setSelectedGroomer] = useState<Groomer | null>(null);
+  const { t, locale } = useLanguage();
+  const [selectedGroomer, setSelectedGroomer] = useState<DemoGroomer | null>(null);
+  const groomers = useMemo(() => groomersForLocale(locale), [locale]);
 
   return (
     <View style={styles.container}>
@@ -192,7 +90,7 @@ const PetKuaferPage: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.pageTitle}>{t('listingGroomer.pageTitle')}</Text>
         <View style={styles.listContainer}>
-          {GROOMERS.map(groomer => (
+          {groomers.map(groomer => (
             <TouchableOpacity
               key={groomer.id}
               style={styles.groomerCard}
